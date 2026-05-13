@@ -1,0 +1,10 @@
+# Production / VM: run Laravel's scheduler once per minute (alternative to `php artisan schedule:work`).
+#
+# 1. Replace /var/www/vendorpulse with your app path and www-data with the PHP user if different.
+# 2. Install: sudo cp deploy/schedule-run.cron.example /etc/cron.d/vendorpulse-scheduler
+#    (or merge the line into root's crontab).
+# 3. Ensure the user can read .env and write to storage/logs if you redirect output there instead of /dev/null.
+#
+# Scheduled tasks are defined in routes/console.php (Horizon snapshot, mailbox polls, site monitoring dispatch).
+
+* * * * * www-data cd /var/www/vendorpulse && /usr/bin/php artisan schedule:run >> /dev/null 2>&1

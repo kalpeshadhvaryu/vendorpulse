@@ -1,0 +1,23 @@
+# Live code inside Docker: bind-mounts this directory into `app`, `horizon`, and `scheduler`.
+#
+# Use with the base stack:
+#   docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d
+#
+# macOS: Docker Desktop → Settings → Resources → File sharing → add a parent of
+# this project (e.g. /Applications/XAMPP or the full path), Apply & Restart.
+#
+# After enabling the mount, install PHP deps inside the app container if needed:
+#   docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app composer install
+
+services:
+  app:
+    volumes:
+      - .:/var/www/html
+
+  horizon:
+    volumes:
+      - .:/var/www/html
+
+  scheduler:
+    volumes:
+      - .:/var/www/html

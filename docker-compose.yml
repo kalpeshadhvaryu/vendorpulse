@@ -1,0 +1,123 @@
+# VendorPulse stack. Postgres DB name is `vendorpulse` only (never touches host `exportdoc`).
+#
+# Default (no host bind mount — works even when Docker blocks /Applications/XAMPP/...):
+#   COMPOSE_PARALLEL_LIMIT=1 docker compose build   # optional if parallel build flakes
+#   docker compose up -d --build
+#   docker compose exec app php artisan migrate --force
+#
+# Live code inside Docker (edit on Mac, run in container). Merge the bind file:
+#   docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d
+#   Requires Docker Desktop → File sharing for this path. Then:
+#   docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app composer install
+#
+# Local dev without mounting: `docker compose up -d` then `php artisan serve` with
+# DB_HOST=127.0.0.1 DB_PORT=54321, REDIS_HOST=127.0.0.1 REDIS_PORT=63791.
+#
+# Long-running processes in this stack: `app` (HTTP), `horizon` (queues), `scheduler` (Laravel schedule).
+# The scheduler runs `php artisan schedule:work` so `routes/console.php` tasks fire (site monitoring, mail polls, etc.).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vendorpulse
+      POSTGRES_USER: vendorpulse
+      POSTGRES_PASSWORD: vendorpulse
+    ports:
+      - "54321:5432"
+    volumes:
+      - vendorpulse_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendorpulse -d vendorpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "63791:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: ${APP_NAME:-VendorPulse}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: vendorpulse
+      DB_USERNAME: vendorpulse
+      DB_PASSWORD: vendorpulse
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  horizon:
+    build: .
+    command: php artisan horizon
+    environment:
+      APP_NAME: ${APP_NAME:-VendorPulse}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: vendorpulse
+      DB_USERNAME: vendorpulse
+      DB_PASSWORD: vendorpulse
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    build: .
+    command: php artisan schedule:work
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-VendorPulse}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: vendorpulse
+      DB_USERNAME: vendorpulse
+      DB_PASSWORD: vendorpulse
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  vendorpulse_pg:
