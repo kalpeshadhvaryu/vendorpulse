@@ -50,9 +50,20 @@ class DatabaseSeeder extends Seeder
 
     private function seedGlobalAdmin(): void
     {
-        $admin = User::query()->firstOrNew([
-            'email' => self::GLOBAL_ADMIN_EMAIL,
-        ]);
+        $admin = User::query()
+            ->withTrashed()
+            ->where('email', self::GLOBAL_ADMIN_EMAIL)
+            ->first();
+
+        if (! $admin) {
+            $admin = new User([
+                'email' => self::GLOBAL_ADMIN_EMAIL,
+            ]);
+        }
+
+        if (method_exists($admin, 'trashed') && $admin->trashed()) {
+            $admin->restore();
+        }
 
         $admin->forceFill([
             'name' => 'Global Admin',
