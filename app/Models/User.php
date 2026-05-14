@@ -18,6 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name',
     'email',
     'password',
+    'is_admin',              // Added for Global Admin
     'timezone',
     'default_organization_id',
     'email_verified_at',
@@ -35,6 +36,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean', // Ensures 1/0 becomes true/false
         ];
     }
 
@@ -61,8 +63,12 @@ class User extends Authenticatable
         return $this->organizations()->wherePivot('role', $role)->exists();
     }
 
+    /**
+     * Determine if the user is a Global Admin.
+     */
     public function isAdmin(): bool
     {
-        return $this->hasOrganizationRole('admin');
+        // Now checks the specific column instead of organization roles
+        return (bool) $this->is_admin;
     }
 }
