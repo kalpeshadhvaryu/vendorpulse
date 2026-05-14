@@ -42,6 +42,35 @@ class OrganizationManagementTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
+    public function test_admin_without_header_is_not_limited_by_default_organization(): void
+    {
+        $orgA = Organization::factory()->create();
+        $orgB = Organization::factory()->create();
+
+        $admin = User::factory()->create([
+            'default_organization_id' => $orgA->id,
+        ]);
+
+        $admin->organizations()->attach($orgA->id, ['role' => 'admin']);
+
+        Vendor::factory()->create([
+            'company_id' => $orgA->id,
+            'name' => 'Vendor Alpha',
+        ]);
+        Vendor::factory()->create([
+            'company_id' => $orgB->id,
+            'name' => 'Vendor Beta',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/v1/vendors');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data');
+    }
+
     public function test_non_admin_cannot_use_another_organization_context(): void
     {
         $user = User::factory()->create();

@@ -24,7 +24,17 @@ class EnsureOrganizationContext
             return ApiResponse::error('Unauthenticated.', Response::HTTP_UNAUTHORIZED);
         }
 
-        $candidateId = $request->header('X-Organization-Id') ?: $user->default_organization_id;
+        $headerOrganizationId = $request->header('X-Organization-Id');
+
+        // In "All organizations" mode, the frontend intentionally omits this header.
+        // Admin requests without an explicit header should remain unscoped.
+        if ($isAdmin && ! $headerOrganizationId) {
+            $this->currentOrganization->clear();
+
+            return $next($request);
+        }
+
+        $candidateId = $headerOrganizationId ?: $user->default_organization_id;
 
         if (! $candidateId) {
             if ($isAdmin) {
