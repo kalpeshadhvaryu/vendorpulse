@@ -202,7 +202,13 @@ class OrganizationManagementController extends BaseApiController
             return ApiResponse::error('Organization is already soft deleted.', Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $organization->delete();
+        DB::transaction(function () use ($organization): void {
+            User::query()->where('default_organization_id', $organization->id)->update([
+                'default_organization_id' => null,
+            ]);
+
+            $organization->delete();
+        });
 
         return ApiResponse::success(null, 'Organization soft deleted.');
     }

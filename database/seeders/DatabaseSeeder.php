@@ -9,6 +9,10 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
+    private const GLOBAL_ADMIN_EMAIL = 'admin@vendorpulse.com';
+
+    private const GLOBAL_ADMIN_PASSWORD = 'Admin@123456';
+
     private const DEV_EMAIL = 'test@example.com';
 
     private const DEV_PASSWORD = 'password';
@@ -22,6 +26,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->seedGlobalAdmin();
+
         $user = User::query()->where('email', self::DEV_EMAIL)->first();
 
         if ($user) {
@@ -42,6 +48,23 @@ class DatabaseSeeder extends Seeder
         $this->call(MonitoringDemoSeeder::class);
     }
 
+    private function seedGlobalAdmin(): void
+    {
+        $admin = User::query()->firstOrNew([
+            'email' => self::GLOBAL_ADMIN_EMAIL,
+        ]);
+
+        $admin->forceFill([
+            'name' => 'Global Admin',
+            'password' => self::GLOBAL_ADMIN_PASSWORD,
+            'is_admin' => true,
+            'default_organization_id' => null,
+            'email_verified_at' => $admin->email_verified_at ?? now(),
+        ])->save();
+
+        $this->command?->info('Global admin '.$admin->email.' / '.self::GLOBAL_ADMIN_PASSWORD.' seeded.');
+    }
+
     private function syncDevUser(User $user): void
     {
         $organization = Organization::query()->firstOrCreate(
@@ -52,6 +75,7 @@ class DatabaseSeeder extends Seeder
         $user->forceFill([
             'name' => 'Test User',
             'password' => self::DEV_PASSWORD,
+            'is_admin' => false,
             'default_organization_id' => $organization->id,
             'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
