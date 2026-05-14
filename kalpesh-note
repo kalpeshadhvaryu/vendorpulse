@@ -139,3 +139,14 @@ cd /var/www/vendorpulse/web_dashboard
 npm install          # Ensures new UI libraries are present
 npm run build        # Compiles the new Landing Page
 pm2 restart all      # Swaps the old site for the new one
+
+
+
+
+Global Admin email: admin@vendorpulse.com
+Global Admin password: Admin@123456
+Seeder source: DatabaseSeeder.php:12
+Also still seeded:
+
+Demo user email: test@example.com
+Demo user password: password
