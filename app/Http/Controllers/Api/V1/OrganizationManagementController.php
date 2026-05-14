@@ -34,9 +34,13 @@ class OrganizationManagementController extends BaseApiController
         Gate::authorize('viewAny', Organization::class);
 
         if ($user->isAdmin()) {
-            $organizations = Organization::query()
-                ->orderBy('name')
-                ->get();
+            $query = Organization::query();
+
+            if (filter_var($request->query('include_trashed'), FILTER_VALIDATE_BOOLEAN)) {
+                $query->withTrashed();
+            }
+
+            $organizations = $query->orderBy('name')->get();
         } else {
             $organizations = $user->organizations()
                 ->orderBy('name')
@@ -188,5 +192,40 @@ class OrganizationManagementController extends BaseApiController
             'User created and assigned to organization.',
             Response::HTTP_CREATED
         );
+    }
+
+    public function destroy(Request $request, Organization $organization): JsonResponse
+    {
+        Gate::authorize('delete', $organization);
+
+        if ($organization->trashed()) {
+            return ApiResponse::error('Organization is already soft deleted.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $organization->delete();
+
+        return ApiResponse::success(null, 'Organization soft deleted.');
+    }
+
+    public function forceDestroy(Request $request, string $organization): JsonResponse
+    {
+        $model = Organization::query()->withTrashed()->find($organization);
+
+        if (! $model) {
+            return ApiResponse::error('Organization not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        Gate::authorize('forceDelete', $model);
+
+        DB::transaction(function () use ($model): void {
+            User::query()->where('default_organization_id', $model->id)->update([
+                'default_organization_id' => null,
+            ]);
+
+            $model->users()->detach();
+            $model->forceDelete();
+        });
+
+        return ApiResponse::success(null, 'Organization permanently deleted.');
     }
 }

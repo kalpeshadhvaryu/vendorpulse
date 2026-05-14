@@ -21,6 +21,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('organizations/users', [OrganizationManagementController::class, 'users']);
         Route::get('organizations', [OrganizationManagementController::class, 'index']);
         Route::post('organizations', [OrganizationManagementController::class, 'store']);
+        Route::delete('organizations/{organization}', [OrganizationManagementController::class, 'destroy']);
+        Route::delete('organizations/{organization}/force', [OrganizationManagementController::class, 'forceDestroy']);
         Route::post('organizations/{organization}/members', [OrganizationManagementController::class, 'attachMember']);
         Route::post('organizations/{organization}/users', [OrganizationManagementController::class, 'createUser']);
 

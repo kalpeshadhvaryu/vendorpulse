@@ -36,4 +36,14 @@ class OrganizationPolicy
     {
         return $user->isAdmin();
     }
+
+    public function delete(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function forceDelete(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
 }

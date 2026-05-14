@@ -253,4 +253,46 @@ class OrganizationManagementTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_admin_can_soft_delete_organization(): void
+    {
+        $admin = User::factory()->create();
+        $adminOrg = Organization::factory()->create();
+        $targetOrg = Organization::factory()->create();
+
+        $admin->organizations()->attach($adminOrg->id, ['role' => 'admin']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->deleteJson("/api/v1/organizations/{$targetOrg->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSoftDeleted('organizations', [
+            'id' => $targetOrg->id,
+        ]);
+    }
+
+    public function test_admin_can_permanently_delete_organization(): void
+    {
+        $admin = User::factory()->create();
+        $adminOrg = Organization::factory()->create();
+        $targetOrg = Organization::factory()->create();
+
+        $admin->organizations()->attach($adminOrg->id, ['role' => 'admin']);
+
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson("/api/v1/organizations/{$targetOrg->id}")->assertOk();
+
+        $response = $this->deleteJson("/api/v1/organizations/{$targetOrg->id}/force");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('organizations', [
+            'id' => $targetOrg->id,
+        ]);
+    }
 }
