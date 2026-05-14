@@ -31,4 +31,9 @@ class OrganizationPolicy
     {
         return $user->isAdmin();
     }
+
+    public function manageSmtp(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
 }

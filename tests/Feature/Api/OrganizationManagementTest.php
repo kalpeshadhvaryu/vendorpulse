@@ -192,6 +192,29 @@ class OrganizationManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_create_organization_with_missing_owner_email_returns_422_and_does_not_create_org(): void
+    {
+        $admin = User::factory()->create();
+        $adminOrg = Organization::factory()->create();
+
+        $admin->organizations()->attach($adminOrg->id, ['role' => 'admin']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/v1/organizations', [
+            'name' => 'Should Not Persist',
+            'slug' => 'should-not-persist',
+            'owner_user_email' => 'missing-user@example.test',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseMissing('organizations', [
+            'slug' => 'should-not-persist',
+        ]);
+    }
+
     public function test_admin_can_list_all_users_with_organization_memberships(): void
     {
         $admin = User::factory()->create();

@@ -69,7 +69,18 @@ class OrganizationManagementController extends BaseApiController
             return ApiResponse::error('Only admins can assign a different organization owner.', Response::HTTP_FORBIDDEN);
         }
 
-        return DB::transaction(function () use ($validated, $ownerEmail, $actor): JsonResponse {
+        $owner = $ownerEmail
+            ? User::query()->whereRaw('LOWER(email) = ?', [$ownerEmail])->first()
+            : $actor;
+
+        if (! $owner) {
+            return ApiResponse::error(
+                'Owner user was not found. Create that user first or leave owner email empty.',
+                Response::HTTP_UNPROCESSABLE_ENTITY
+            );
+        }
+
+        return DB::transaction(function () use ($validated, $actor, $owner): JsonResponse {
             $organization = Organization::query()->create([
                 'name' => $validated['name'],
                 'slug' => $validated['slug'] ?? null,
@@ -77,14 +88,6 @@ class OrganizationManagementController extends BaseApiController
                 'created_by' => $actor->id,
                 'updated_by' => $actor->id,
             ]);
-
-            $owner = $ownerEmail
-                ? User::query()->whereRaw('LOWER(email) = ?', [$ownerEmail])->first()
-                : $actor;
-
-            if (! $owner) {
-                return ApiResponse::error('Owner user was not found.', Response::HTTP_NOT_FOUND);
-            }
 
             $owner->organizations()->syncWithoutDetaching([
                 $organization->id => [

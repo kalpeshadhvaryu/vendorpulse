@@ -1,0 +1,141 @@
+For the Backend:
+
+Bash
+cd /path/to/vendorpulse
+git add .
+git commit -m "feat: description of backend changes"
+git push origin kalpesh
+
+For the Frontend (The Landing Page):
+
+Bash
+cd /path/to/vendorpulse/web_dashboard
+git add .
+git commit -m "feat: update landing page"
+git push origin kalpesh
+
+To make this "safe" and reliable, we need to stop treating the server like a manual playground and start using a standard deployment flow. Because you have two repositories (Backend and Frontend), you have to sync both.
+
+Here is the professional, safe way to publish your changes without breaking the site.
+
+Step 1: The "Local" Stage (On your MacBook)
+Never write code directly on the server. Always push from your Mac first.
+
+For the Backend:
+
+Bash
+cd /path/to/vendorpulse
+git add .
+git commit -m "feat: description of backend changes"
+git push origin kalpesh
+
+
+
+For the Frontend (The Landing Page):
+
+Bash
+cd /path/to/vendorpulse/web_dashboard
+git add .
+git commit -m "feat: update landing page"
+git push origin kalpesh
+Step 2: The "Server" Stage (On Contabo)
+Now that the code is safely on GitHub, we pull and "activate" it.
+
+1. Update the Repositories
+Bash
+# Update Backend
+cd /var/www/vendorpulse && git pull origin kalpesh
+
+# Update Frontend
+cd /var/www/vendorpulse/web_dashboard && git pull origin kalpesh
+
+To make this "safe" and reliable, we need to stop treating the server like a manual playground and start using a standard deployment flow. Because you have two repositories (Backend and Frontend), you have to sync both.
+
+Here is the professional, safe way to publish your changes without breaking the site.
+
+Step 1: The "Local" Stage (On your MacBook)
+Never write code directly on the server. Always push from your Mac first.
+
+For the Backend:
+
+Bash
+cd /path/to/vendorpulse
+git add .
+git commit -m "feat: description of backend changes"
+git push origin kalpesh
+For the Frontend (The Landing Page):
+
+Bash
+cd /path/to/vendorpulse/web_dashboard
+git add .
+git commit -m "feat: update landing page"
+git push origin kalpesh
+Step 2: The "Server" Stage (On Contabo)
+Now that the code is safely on GitHub, we pull and "activate" it.
+
+1. Update the Repositories
+Bash
+# Update Backend
+cd /var/www/vendorpulse && git pull origin kalpesh
+
+# Update Frontend
+cd /var/www/vendorpulse/web_dashboard && git pull origin kalpesh
+
+
+
+2. The "Safe" Laravel Update (Docker)
+Instead of just pulling, you must ensure the environment matches the code:
+
+Bash
+cd /var/www/vendorpulse
+docker exec -it vendorpulse-app-1 composer install  # Install new tools
+docker exec -it vendorpulse-app-1 php artisan migrate --force # Update DB
+docker exec -it vendorpulse-app-1 php artisan optimize # Clear old cache
+
+To make this "safe" and reliable, we need to stop treating the server like a manual playground and start using a standard deployment flow. Because you have two repositories (Backend and Frontend), you have to sync both.
+
+Here is the professional, safe way to publish your changes without breaking the site.
+
+Step 1: The "Local" Stage (On your MacBook)
+Never write code directly on the server. Always push from your Mac first.
+
+For the Backend:
+
+Bash
+cd /path/to/vendorpulse
+git add .
+git commit -m "feat: description of backend changes"
+git push origin kalpesh
+For the Frontend (The Landing Page):
+
+Bash
+cd /path/to/vendorpulse/web_dashboard
+git add .
+git commit -m "feat: update landing page"
+git push origin kalpesh
+Step 2: The "Server" Stage (On Contabo)
+Now that the code is safely on GitHub, we pull and "activate" it.
+
+1. Update the Repositories
+Bash
+# Update Backend
+cd /var/www/vendorpulse && git pull origin kalpesh
+
+# Update Frontend
+cd /var/www/vendorpulse/web_dashboard && git pull origin kalpesh
+2. The "Safe" Laravel Update (Docker)
+Instead of just pulling, you must ensure the environment matches the code:
+
+Bash
+cd /var/www/vendorpulse
+docker exec -it vendorpulse-app-1 composer install  # Install new tools
+docker exec -it vendorpulse-app-1 php artisan migrate --force # Update DB
+docker exec -it vendorpulse-app-1 php artisan optimize # Clear old cache
+3. The "Safe" Next.js Update (PM2)
+This is where landing page changes actually "go live":
+
+Bash
+cd /var/www/vendorpulse/web_dashboard
+npm install          # Ensures new UI libraries are present
+npm run build        # Compiles the new Landing Page
+pm2 restart all      # Swaps the old site for the new one

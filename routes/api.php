@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MonitoringCheckController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrganizationManagementController;
+use App\Http\Controllers\Api\V1\OrganizationSmtpSettingsController;
 use App\Http\Controllers\Api\V1\VendorController;
 use App\Http\Controllers\Api\V1\VendorEmailController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,10 @@ Route::prefix('v1')->group(function (): void {
             Route::apiResource('monitoring-checks', MonitoringCheckController::class);
 
             Route::apiResource('email-mailboxes', EmailMailboxController::class);
+
+            Route::get('organization/smtp-settings', [OrganizationSmtpSettingsController::class, 'show']);
+            Route::put('organization/smtp-settings', [OrganizationSmtpSettingsController::class, 'update']);
+            Route::post('organization/smtp-settings/test', [OrganizationSmtpSettingsController::class, 'sendTestEmail']);
 
             Route::get('notifications', [NotificationController::class, 'index']);
             Route::patch('notifications/{id}/read', [NotificationController::class, 'markAsRead']);
