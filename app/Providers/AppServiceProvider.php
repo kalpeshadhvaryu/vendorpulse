@@ -10,7 +10,10 @@ use App\Repositories\Eloquent\InvoiceRepository;
 use App\Repositories\Eloquent\MonitoringCheckRepository;
 use App\Repositories\Eloquent\VendorEmailRepository;
 use App\Repositories\Eloquent\VendorRepository;
+use App\Models\Organization;
+use App\Policies\OrganizationPolicy;
 use App\Support\Organization\CurrentOrganization;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +30,6 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        Gate::policy(Organization::class, OrganizationPolicy::class);
     }
 }

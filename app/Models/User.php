@@ -55,4 +55,14 @@ class User extends Authenticatable
     {
         return $this->organizations()->where('organizations.id', $organizationId)->exists();
     }
+
+    public function hasOrganizationRole(string $role): bool
+    {
+        return $this->organizations()->wherePivot('role', $role)->exists();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasOrganizationRole('admin');
+    }
 }

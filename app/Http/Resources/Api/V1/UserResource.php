@@ -19,6 +19,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'timezone' => $this->timezone,
+            'is_admin' => $this->isAdmin(),
             'default_organization_id' => $this->default_organization_id,
             'organizations' => OrganizationResource::collection($this->whenLoaded('organizations')),
             'default_organization' => new OrganizationResource($this->whenLoaded('defaultOrganization')),

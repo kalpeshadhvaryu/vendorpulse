@@ -18,6 +18,7 @@ class OrganizationResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
+            'role' => $this->whenPivotLoaded('organization_user', fn () => $this->pivot?->role),
             'settings' => $this->settings,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

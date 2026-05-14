@@ -1,0 +1,18 @@
+VendorPulse production monitoring note
+
+Validated root cause:
+- Next.js dashboard must be built with NEXT_PUBLIC_API_URL pointing at the production API.
+- Docker app/horizon/scheduler containers must reach the production Postgres instance.
+- In this deployment, the host Postgres listens on 5433 and Docker can reach it via the bridge gateway (172.19.0.1) after Postgres listens on all interfaces and pg_hba allows 172.19.0.0/16.
+
+Working state we confirmed:
+- Docker app container can connect to Postgres.
+- app container sees real production data (users and monitoring checks).
+- RunMonitoringCheckJob writes monitoring_logs.
+- Horizon is running and consuming the site-monitoring queue.
+
+Operational reminders:
+- Restart/rebuild Next.js after changing NEXT_PUBLIC_API_URL.
+- Keep scheduler/Horizon running.
+- Rotate DB credentials if exposed.
+- Back up docker-compose.override.yml and PostgreSQL config after changes.

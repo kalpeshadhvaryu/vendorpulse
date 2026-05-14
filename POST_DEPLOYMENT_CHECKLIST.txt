@@ -1,0 +1,12 @@
+VendorPulse post-deploy checklist
+
+1. Confirm NEXT_PUBLIC_API_URL points to the production API.
+2. Rebuild and restart the Next.js dashboard process.
+3. Start/restart Horizon and verify the site-monitoring queue worker is running.
+4. Verify scheduler is active (Docker scheduler or cron schedule:run every minute).
+5. Confirm Docker app can reach Postgres and sees real counts for users and monitoring checks.
+6. Run a manual monitoring job and verify a new monitoring_logs row is created.
+7. Check the latest monitoring log in the UI history page.
+8. Validate no failed jobs in queue:failed and Horizon status is running.
+9. Backup docker-compose.override.yml and PostgreSQL config changes.
+10. Rotate any exposed credentials and secrets if needed.

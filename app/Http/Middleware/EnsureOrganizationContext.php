@@ -18,6 +18,7 @@ class EnsureOrganizationContext
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+        $isAdmin = $user?->isAdmin() === true;
 
         if (! $user) {
             return ApiResponse::error('Unauthenticated.', Response::HTTP_UNAUTHORIZED);
@@ -26,13 +27,19 @@ class EnsureOrganizationContext
         $candidateId = $request->header('X-Organization-Id') ?: $user->default_organization_id;
 
         if (! $candidateId) {
+            if ($isAdmin) {
+                $this->currentOrganization->clear();
+
+                return $next($request);
+            }
+
             return ApiResponse::error(
                 'Organization context is required. Send X-Organization-Id or assign a default organization to the user.',
                 Response::HTTP_UNPROCESSABLE_ENTITY
             );
         }
 
-        if (! $user->belongsToOrganization((string) $candidateId)) {
+        if (! $isAdmin && ! $user->belongsToOrganization((string) $candidateId)) {
             return ApiResponse::error('You do not have access to this organization.', Response::HTTP_FORBIDDEN);
         }
 
