@@ -50,8 +50,9 @@ pull_branch_ff_only "$FRONTEND_DIR" "$FRONTEND_BRANCH" "Frontend"
 
 echo "🗃️ Running backend updates..."
 cd "$ROOT_DIR"
-docker exec vendorpulse-app-1 php artisan migrate --force
-docker exec vendorpulse-app-1 php artisan optimize
+docker compose up -d --build app horizon scheduler
+docker compose exec -T app php artisan migrate --force
+docker compose exec -T app php artisan optimize
 
 echo "🧱 Building frontend..."
 cd "$FRONTEND_DIR"
