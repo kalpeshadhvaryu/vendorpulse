@@ -15,6 +15,7 @@ FRONTEND_DIR="$ROOT_DIR/web_dashboard"
 BACKEND_BRANCH="${BACKEND_BRANCH:-kalpesh}"
 FRONTEND_BRANCH="${FRONTEND_BRANCH:-kalpesh}"
 FRONTEND_HEALTH_URL="${FRONTEND_HEALTH_URL:-http://127.0.0.1:3000/web_dashboard/login}"
+FRONTEND_DEPLOY_CACHE_FILE="${FRONTEND_DEPLOY_CACHE_FILE:-/tmp/vendorpulse-web_dashboard.package-json.sha256}"
 
 require_clean_git_tree() {
 	local dir="$1"
@@ -61,6 +62,19 @@ wait_for_frontend() {
 	exit 1
 }
 
+ensure_frontend_dependencies() {
+	local package_hash
+	package_hash="$(sha256sum package.json | awk '{print $1}')"
+
+	if [ ! -d node_modules ] || [ ! -f "$FRONTEND_DEPLOY_CACHE_FILE" ] || [ "$(cat "$FRONTEND_DEPLOY_CACHE_FILE")" != "$package_hash" ]; then
+		echo "🧰 Installing frontend dependencies..."
+		npm install
+		printf '%s\n' "$package_hash" > "$FRONTEND_DEPLOY_CACHE_FILE"
+	else
+		echo "✅ Frontend dependencies already up to date"
+	fi
+}
+
 echo "📦 Validating git worktrees..."
 require_clean_git_tree "$ROOT_DIR" "Backend repository"
 require_clean_git_tree "$FRONTEND_DIR" "Frontend repository"
@@ -71,14 +85,14 @@ pull_branch_ff_only "$FRONTEND_DIR" "$FRONTEND_BRANCH" "Frontend"
 
 echo "🗃️ Running backend updates..."
 cd "$ROOT_DIR"
-docker compose up -d --build app horizon scheduler
-docker compose exec -T app php artisan migrate --force
-docker compose exec -T app php artisan optimize
+COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
+"${COMPOSE_CMD[@]}" up -d --force-recreate --no-build app horizon scheduler
+"${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force
+"${COMPOSE_CMD[@]}" exec -T app php artisan optimize
 
 echo "🧱 Building frontend..."
 cd "$FRONTEND_DIR"
-npm install
-rm -rf .next
+ensure_frontend_dependencies
 npm run build
 
 if [ ! -f .next/BUILD_ID ]; then
