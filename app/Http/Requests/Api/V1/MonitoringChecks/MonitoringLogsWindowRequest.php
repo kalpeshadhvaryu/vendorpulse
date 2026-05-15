@@ -17,6 +17,8 @@ class MonitoringLogsWindowRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'from_at' => ['sometimes', 'nullable', 'date'],
+            'to_at' => ['sometimes', 'nullable', 'date', 'after_or_equal:from_at'],
             'from' => ['sometimes', 'nullable', 'date'],
             'to' => ['sometimes', 'nullable', 'date', 'after_or_equal:from'],
         ];

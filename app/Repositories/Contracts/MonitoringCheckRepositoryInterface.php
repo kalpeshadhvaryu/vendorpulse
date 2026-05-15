@@ -10,10 +10,13 @@ use Illuminate\Support\Collection;
 
 interface MonitoringCheckRepositoryInterface
 {
-    public function paginate(int $perPage = 15): LengthAwarePaginator;
+    /**
+     * @param  array{search?: string}  $filters
+     */
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator;
 
     /**
-     * @param  array{status?: string, from?: Carbon, to?: Carbon}  $filters
+        * @param  array{search?: string, downtime_only?: bool, status?: string, from?: Carbon, to?: Carbon}  $filters
      * @return LengthAwarePaginator<int, MonitoringLog>
      */
     public function paginateLogsForCheck(MonitoringCheck $check, int $perPage = 30, array $filters = []): LengthAwarePaginator;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Api\V1\MonitoringChecks\ListMonitoringLogsRequest;
+use App\Http\Requests\Api\V1\MonitoringChecks\ListMonitoringChecksRequest;
 use App\Http\Requests\Api\V1\MonitoringChecks\MonitoringLogsWindowRequest;
 use App\Http\Requests\Api\V1\MonitoringChecks\StoreMonitoringCheckRequest;
 use App\Http\Requests\Api\V1\MonitoringChecks\UpdateMonitoringCheckRequest;
@@ -23,12 +24,18 @@ class MonitoringCheckController extends BaseApiController
         protected MonitoringCheckService $monitoringChecks
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListMonitoringChecksRequest $request): JsonResponse
     {
-        $perPage = min((int) $request->query('per_page', 15), 100);
+        $validated = $request->validated();
+        $perPage = min((int) ($validated['per_page'] ?? 15), 100);
+
+        $filters = [];
+        if (! empty($validated['search'])) {
+            $filters['search'] = trim((string) $validated['search']);
+        }
 
         return ApiResponse::fromResource(
-            MonitoringCheckResource::collection($this->monitoringChecks->paginate($perPage))
+            MonitoringCheckResource::collection($this->monitoringChecks->paginate($perPage, $filters))
         );
     }
 
@@ -41,11 +48,21 @@ class MonitoringCheckController extends BaseApiController
         if (! empty($validated['status'])) {
             $filters['status'] = $validated['status'];
         }
-        if (! empty($validated['from'])) {
+        if (! empty($validated['from_at'])) {
+            $filters['from'] = Carbon::parse($validated['from_at']);
+        } elseif (! empty($validated['from'])) {
             $filters['from'] = Carbon::parse($validated['from'])->startOfDay();
         }
-        if (! empty($validated['to'])) {
+        if (! empty($validated['to_at'])) {
+            $filters['to'] = Carbon::parse($validated['to_at']);
+        } elseif (! empty($validated['to'])) {
             $filters['to'] = Carbon::parse($validated['to'])->endOfDay();
+        }
+        if (! empty($validated['search'])) {
+            $filters['search'] = trim((string) $validated['search']);
+        }
+        if (($validated['downtime_only'] ?? false) === true) {
+            $filters['downtime_only'] = true;
         }
 
         return ApiResponse::fromResource(
@@ -56,14 +73,46 @@ class MonitoringCheckController extends BaseApiController
     public function logSummary(MonitoringLogsWindowRequest $request, MonitoringCheck $monitoringCheck): JsonResponse
     {
         $validated = $request->validated();
-        $from = isset($validated['from'])
-            ? Carbon::parse($validated['from'])->startOfDay()
-            : now()->subDays(7)->startOfDay();
-        $to = isset($validated['to'])
-            ? Carbon::parse($validated['to'])->endOfDay()
-            : now()->endOfSecond();
+        $from = isset($validated['from_at'])
+            ? Carbon::parse($validated['from_at'])
+            : (isset($validated['from'])
+                ? Carbon::parse($validated['from'])->startOfDay()
+                : now()->subDays(7)->startOfDay());
+        $to = isset($validated['to_at'])
+            ? Carbon::parse($validated['to_at'])
+            : (isset($validated['to'])
+                ? Carbon::parse($validated['to'])->endOfDay()
+                : now()->endOfSecond());
 
         $summary = $this->monitoringChecks->summarizeLogsWindow($monitoringCheck, $from, $to);
+
+        return ApiResponse::success($summary);
+    }
+
+    public function serverAnalytics(MonitoringLogsWindowRequest $request, MonitoringCheck $monitoringCheck): JsonResponse
+    {
+        $validated = $request->validated();
+        $from = isset($validated['from_at'])
+            ? Carbon::parse($validated['from_at'])
+            : (isset($validated['from'])
+                ? Carbon::parse($validated['from'])->startOfDay()
+                : now()->subDays(7)->startOfDay());
+        $to = isset($validated['to_at'])
+            ? Carbon::parse($validated['to_at'])
+            : (isset($validated['to'])
+                ? Carbon::parse($validated['to'])->endOfDay()
+                : now()->endOfSecond());
+
+        if (strtolower((string) $monitoringCheck->type) !== 'server') {
+            return ApiResponse::success([
+                'window_from' => $from->toIso8601String(),
+                'window_to' => $to->toIso8601String(),
+                'sample_count' => 0,
+                'metrics' => [],
+            ]);
+        }
+
+        $summary = $this->monitoringChecks->summarizeServerMetrics($monitoringCheck, $from, $to);
 
         return ApiResponse::success($summary);
     }

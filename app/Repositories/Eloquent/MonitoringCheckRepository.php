@@ -7,15 +7,27 @@ use App\Models\MonitoringLog;
 use App\Repositories\Contracts\MonitoringCheckRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
 {
-    public function paginate(int $perPage = 15): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        return MonitoringCheck::query()
-            ->orderByDesc('created_at')
-            ->paginate($perPage);
+        $query = MonitoringCheck::query();
+
+        if (! empty($filters['search'])) {
+            $term = '%'.addcslashes((string) $filters['search'], '%_\\').'%';
+            $query->where(function (Builder $q) use ($term): void {
+                $q->where('name', 'like', $term)
+                    ->orWhere('type', 'like', $term)
+                    ->orWhere('endpoint', 'like', $term)
+                    ->orWhere('last_status', 'like', $term)
+                    ->orWhere('last_message', 'like', $term);
+            });
+        }
+
+        return $query->orderByDesc('created_at')->paginate($perPage);
     }
 
     public function paginateLogsForCheck(MonitoringCheck $check, int $perPage = 30, array $filters = []): LengthAwarePaginator
@@ -23,6 +35,19 @@ class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
         $query = MonitoringLog::query()
             ->where('monitoring_check_id', $check->id)
             ->where('organization_id', $check->organization_id);
+
+        if (! empty($filters['search'])) {
+            $term = '%'.addcslashes((string) $filters['search'], '%_\\').'%';
+            $query->where(function (Builder $q) use ($term): void {
+                $q->where('message', 'like', $term)
+                    ->orWhere('status', 'like', $term)
+                    ->orWhereRaw('CAST(http_status AS TEXT) like ?', [$term]);
+            });
+        }
+
+        if (($filters['downtime_only'] ?? false) === true) {
+            $query->whereIn('status', ['failed', 'error', 'degraded']);
+        }
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);

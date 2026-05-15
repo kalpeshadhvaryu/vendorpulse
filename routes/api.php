@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\EmailMailboxController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MonitoringCheckController;
@@ -27,12 +28,14 @@ Route::prefix('v1')->group(function (): void {
         Route::post('organizations/{organization}/users', [OrganizationManagementController::class, 'createUser']);
 
         Route::middleware('organization.context')->group(function (): void {
+            Route::get('dashboard/trends', [DashboardAnalyticsController::class, 'trends']);
             Route::post('vendors/{id}/restore', [VendorController::class, 'restore']);
             Route::apiResource('vendors', VendorController::class);
             Route::apiResource('vendor-emails', VendorEmailController::class);
             Route::apiResource('invoices', InvoiceController::class);
             Route::get('monitoring-checks/{monitoring_check}/logs', [MonitoringCheckController::class, 'logs']);
             Route::get('monitoring-checks/{monitoring_check}/log-summary', [MonitoringCheckController::class, 'logSummary']);
+            Route::get('monitoring-checks/{monitoring_check}/server-analytics', [MonitoringCheckController::class, 'serverAnalytics']);
             Route::post('monitoring-checks/{monitoring_check}/run', [MonitoringCheckController::class, 'run']);
             Route::apiResource('monitoring-checks', MonitoringCheckController::class);
 

@@ -18,13 +18,16 @@ class MonitoringCheckService
         protected CurrentOrganization $currentOrganization
     ) {}
 
-    public function paginate(int $perPage = 15): LengthAwarePaginator
+    /**
+     * @param  array{search?: string}  $filters
+     */
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        return $this->monitoringChecks->paginate($perPage);
+        return $this->monitoringChecks->paginate($perPage, $filters);
     }
 
     /**
-     * @param  array{status?: string, from?: Carbon, to?: Carbon}  $filters
+        * @param  array{search?: string, downtime_only?: bool, status?: string, from?: Carbon, to?: Carbon}  $filters
      * @return LengthAwarePaginator<int, MonitoringLog>
      */
     public function paginateLogs(MonitoringCheck $monitoringCheck, int $perPage = 30, array $filters = []): LengthAwarePaginator
@@ -150,6 +153,72 @@ class MonitoringCheckService
             'duration_seconds' => $durations,
             'uptime_ratio' => $uptimeRatio,
             'downtime_incidents' => $downtimeIncidents,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   window_from: string,
+     *   window_to: string,
+     *   sample_count: int,
+     *   metrics: array<string, array{avg: float|null, min: float|null, max: float|null, latest: float|null}>
+     * }
+     */
+    public function summarizeServerMetrics(MonitoringCheck $check, Carbon $from, Carbon $to): array
+    {
+        $logs = $this->monitoringChecks->logsBetween($check, $from, $to, 10000);
+
+        $keys = [
+            'load_1m',
+            'load_5m',
+            'load_15m',
+            'cpu_percent',
+            'memory_used_percent',
+            'disk_used_percent',
+            'bandwidth_used_bytes',
+            'process_count',
+        ];
+
+        $bucket = [];
+        foreach ($keys as $key) {
+            $bucket[$key] = [];
+        }
+
+        foreach ($logs as $log) {
+            foreach ($keys as $key) {
+                $value = data_get($log->meta, 'metrics.'.$key);
+                if (is_numeric($value)) {
+                    $bucket[$key][] = (float) $value;
+                }
+            }
+        }
+
+        $metrics = [];
+        foreach ($keys as $key) {
+            $values = $bucket[$key];
+            if ($values === []) {
+                $metrics[$key] = [
+                    'avg' => null,
+                    'min' => null,
+                    'max' => null,
+                    'latest' => null,
+                ];
+                continue;
+            }
+
+            $metrics[$key] = [
+                'avg' => round(array_sum($values) / count($values), 2),
+                'min' => round(min($values), 2),
+                'max' => round(max($values), 2),
+                'latest' => round((float) end($values), 2),
+            ];
+        }
+
+        return [
+            'window_from' => $from->toIso8601String(),
+            'window_to' => $to->toIso8601String(),
+            'sample_count' => $logs->count(),
+            'metrics' => $metrics,
         ];
     }
 

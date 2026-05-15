@@ -4,6 +4,7 @@ namespace App\SiteMonitoring\Services;
 
 use App\Models\MonitoringCheck;
 use App\SiteMonitoring\Checks\DomainExpiryCheckStrategy;
+use App\SiteMonitoring\Checks\ServerApiCheckStrategy;
 use App\SiteMonitoring\Checks\SslCertificateCheckStrategy;
 use App\SiteMonitoring\Checks\UnsupportedCheckStrategy;
 use App\SiteMonitoring\Checks\UptimeHttpCheckStrategy;
@@ -15,6 +16,7 @@ class MonitoringStrategyRegistry
         protected UptimeHttpCheckStrategy $uptime,
         protected SslCertificateCheckStrategy $ssl,
         protected DomainExpiryCheckStrategy $domain,
+        protected ServerApiCheckStrategy $server,
         protected UnsupportedCheckStrategy $unsupported,
     ) {}
 
@@ -24,6 +26,7 @@ class MonitoringStrategyRegistry
             'uptime', 'http', 'https' => $this->uptime,
             'ssl', 'tls' => $this->ssl,
             'domain', 'whois' => $this->domain,
+            'server' => $this->server,
             default => $this->unsupported,
         };
     }
