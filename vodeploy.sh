@@ -1,18 +1,58 @@
-#!/bin/bash
-echo "🚀 Starting Deployment..."
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 1. Pull Code
-git pull origin kalpesh
-cd web_dashboard && git pull origin kalpesh && cd ..
+echo "🚀 Starting deployment..."
 
-# 2. Update Backend
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+FRONTEND_DIR="$ROOT_DIR/web_dashboard"
+BACKEND_BRANCH="${BACKEND_BRANCH:-kalpesh}"
+FRONTEND_BRANCH="${FRONTEND_BRANCH:-kalpesh}"
+
+require_clean_git_tree() {
+	local dir="$1"
+	local label="$2"
+
+	cd "$dir"
+
+	if ! git diff --quiet || ! git diff --cached --quiet; then
+		echo "❌ $label has local changes. Commit, stash, or discard them before deploy."
+		git status --short
+		exit 1
+	fi
+}
+
+pull_branch_ff_only() {
+	local dir="$1"
+	local branch="$2"
+	local label="$3"
+
+	cd "$dir"
+	git fetch origin "$branch"
+	git checkout "$branch"
+	git pull --ff-only origin "$branch"
+	echo "✅ $label updated to origin/$branch"
+}
+
+echo "📦 Validating git worktrees..."
+require_clean_git_tree "$ROOT_DIR" "Backend repository"
+require_clean_git_tree "$FRONTEND_DIR" "Frontend repository"
+
+echo "⬇️ Pulling latest code..."
+pull_branch_ff_only "$ROOT_DIR" "$BACKEND_BRANCH" "Backend"
+pull_branch_ff_only "$FRONTEND_DIR" "$FRONTEND_BRANCH" "Frontend"
+
+echo "🗃️ Running backend updates..."
+cd "$ROOT_DIR"
 docker exec vendorpulse-app-1 php artisan migrate --force
 docker exec vendorpulse-app-1 php artisan optimize
 
-# 3. Update Frontend
-cd web_dashboard
+echo "🧱 Building frontend..."
+cd "$FRONTEND_DIR"
 npm install
+rm -rf .next
 npm run build
+
+echo "🔁 Restarting frontend process..."
 pm2 restart vendorpulse-frontend
 
-echo "✅ Deployment Complete!"
+echo "✅ Deployment complete"
