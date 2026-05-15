@@ -14,6 +14,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_DIR="$ROOT_DIR/web_dashboard"
 BACKEND_BRANCH="${BACKEND_BRANCH:-kalpesh}"
 FRONTEND_BRANCH="${FRONTEND_BRANCH:-kalpesh}"
+FRONTEND_HEALTH_URL="${FRONTEND_HEALTH_URL:-http://127.0.0.1:3000/login}"
 
 require_clean_git_tree() {
 	local dir="$1"
@@ -38,6 +39,26 @@ pull_branch_ff_only() {
 	git checkout "$branch"
 	git pull --ff-only origin "$branch"
 	echo "✅ $label updated to origin/$branch"
+}
+
+wait_for_frontend() {
+	local attempts=20
+	local sleep_seconds=2
+
+	for ((i=1; i<=attempts; i++)); do
+		if curl -fsS "$FRONTEND_HEALTH_URL" >/dev/null 2>&1; then
+			echo "✅ Frontend healthy at $FRONTEND_HEALTH_URL"
+			return 0
+		fi
+
+		echo "⏳ Waiting for frontend to become healthy ($i/$attempts)..."
+		sleep "$sleep_seconds"
+	done
+
+	echo "❌ Frontend did not become healthy at $FRONTEND_HEALTH_URL"
+	pm2 status vendorpulse-frontend || true
+	pm2 logs vendorpulse-frontend --lines 80 --nostream || true
+	exit 1
 }
 
 echo "📦 Validating git worktrees..."
@@ -66,6 +87,7 @@ if [ ! -f .next/BUILD_ID ]; then
 fi
 
 echo "🔁 Restarting frontend process..."
-pm2 restart vendorpulse-frontend
+pm2 restart vendorpulse-frontend --update-env
+wait_for_frontend
 
 echo "✅ Deployment complete"
