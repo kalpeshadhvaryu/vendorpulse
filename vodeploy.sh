@@ -21,7 +21,7 @@ require_clean_git_tree() {
 
 	cd "$dir"
 
-	if ! git diff --quiet || ! git diff --cached --quiet; then
+	if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
 		echo "❌ $label has local changes. Commit, stash, or discard them before deploy."
 		git status --short
 		exit 1
