@@ -87,7 +87,8 @@ if [ ! -f .next/BUILD_ID ]; then
 fi
 
 echo "🔁 Restarting frontend process..."
-pm2 restart vendorpulse-frontend --update-env
+pm2 delete vendorpulse-frontend >/dev/null 2>&1 || true
+pm2 start npm --name vendorpulse-frontend --cwd "$FRONTEND_DIR" -- start
 wait_for_frontend
 
 echo "✅ Deployment complete"
