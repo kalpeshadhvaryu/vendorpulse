@@ -14,7 +14,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_DIR="$ROOT_DIR/web_dashboard"
 BACKEND_BRANCH="${BACKEND_BRANCH:-kalpesh}"
 FRONTEND_BRANCH="${FRONTEND_BRANCH:-kalpesh}"
-FRONTEND_HEALTH_URL="${FRONTEND_HEALTH_URL:-http://127.0.0.1:3000/login}"
+FRONTEND_HEALTH_URL="${FRONTEND_HEALTH_URL:-http://127.0.0.1:3000/web_dashboard/login}"
 
 require_clean_git_tree() {
 	local dir="$1"
