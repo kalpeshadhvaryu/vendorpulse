@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+if [ -z "${BASH_VERSION:-}" ]; then
+	echo "❌ This script must be run with bash. Use: bash vodeploy.sh"
+	exit 1
+fi
+
+set -Eeuo pipefail
+trap 'echo "❌ Deployment failed at line $LINENO"' ERR
 
 echo "🚀 Starting deployment..."
 
@@ -51,6 +58,11 @@ cd "$FRONTEND_DIR"
 npm install
 rm -rf .next
 npm run build
+
+if [ ! -f .next/BUILD_ID ]; then
+	echo "❌ Frontend build artifact missing (.next/BUILD_ID). Aborting restart."
+	exit 1
+fi
 
 echo "🔁 Restarting frontend process..."
 pm2 restart vendorpulse-frontend
