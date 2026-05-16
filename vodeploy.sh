@@ -34,7 +34,7 @@ echo "🔒 Restoring folder permissions inside container..."
 
 # Fast cache refresh + ALWAYS run migrations on every deploy
 echo "🧩 Running database migrations (always)..."
-# APP_KEY_VALUE="$("${COMPOSE_CMD[@]}" exec -T app php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $kernel = $app->make(Illuminate\\Contracts\\Console\\Kernel::class); $kernel->bootstrap(); echo (string) config("app.key");')"
+APP_KEY_VALUE="$("${COMPOSE_CMD[@]}" exec -T app php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $kernel = $app->make(Illuminate\\Contracts\\Console\\Kernel::class); $kernel->bootstrap(); echo (string) config("app.key");')"
 if [ -z "$APP_KEY_VALUE" ]; then
     echo "❌ APP_KEY is missing inside app container. Set APP_KEY before deploy."
     exit 1
