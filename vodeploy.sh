@@ -21,7 +21,6 @@ git reset --hard "origin/${FRONTEND_BRANCH:-kalpesh}"
 echo "🗃️ Refreshing Backend State..."
 cd "$ROOT_DIR"
 
-# Targets ONLY your specific compose configuration files to safe-guard exportdoc
 COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 "${COMPOSE_CMD[@]}" up -d app horizon scheduler
 
@@ -35,13 +34,13 @@ echo "🔒 Restoring folder permissions inside container..."
 
 echo "🧩 Running database migrations (always)..."
 
-# ✅ FIX: Safely parse APP_KEY from .env directly without booting Laravel 
+# Safely parse and verify APP_KEY exists inside .env directly
 if ! grep -q "APP_KEY=" .env || [ -z "$(grep "APP_KEY=" .env | cut -d '=' -f2)" ]; then
     echo "❌ APP_KEY is missing inside .env. Set APP_KEY before deploy."
     exit 1
 fi
 
-# Clean execution logic without TTY check issues
+# Clean optimization execution
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear --no-interaction
 "${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force --no-interaction
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize --no-interaction
