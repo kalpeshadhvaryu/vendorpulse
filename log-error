@@ -1,0 +1,27 @@
+There is no existing directory at "/var/www/html/storage/logs" and it could not be created: Permission denied
+
+This is a classic permissions error that happens when the Laravel application running inside the Docker container tries to write to its log file (laravel.log), but the web server user (usually www-data) doesn't have ownership or write access to the storage folder.
+
+Since your container does not use volume mounts (it's an isolated box), the permissions must be fixed directly inside the container's environment.
+
+The Fix: Create and Fix Permissions Inside Docker
+Run these three commands in your Contabo terminal to manually create the directory and grant the correct permissions to the web server:
+
+Bash
+# 1. Force create the logs directory inside the container
+docker exec -it --user root vendorpulse-app-1 mkdir -p /var/www/html/storage/logs
+
+# 2. Change the ownership of the entire storage folder to the web server user (www-data)
+docker exec -it --user root vendorpulse-app-1 chown -R www-data:www-data /var/www/html/storage
+
+# 3. Grant proper read/write permissions to the storage directory
+docker exec -it --user root vendorpulse-app-1 chmod -R 775 /var/www/html/storage
+Step 2: Clear the Application Cache
+Once the permissions are fixed, force Laravel to clear its configuration cache so it can attempt to boot cleanly again:
+
+Bash
+docker exec -it vendorpulse-app-1 php artisan optimize:clear
+Why did this happen?
+When you ran the docker cp commands or executed updates earlier as the root user, the storage/ directory structure likely ended up owned by root. When a web visitor hits your Next.js frontend, the frontend talks to the Laravel API, which runs under the www-data user. Because www-data cannot write to a root-owned folder, the application crashes before it can even load the dashboard.
+
+Refresh your dashboard page now—the permission blockage is gone!
