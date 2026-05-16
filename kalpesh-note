@@ -153,3 +153,8 @@ Demo user password: password
 
 wsl veraval password in Honest@2026 or Honest@2026VO
 
+
+
+this is when log error comes 
+docker exec -it vendorpulse-app-1 php artisan optimize:clear
+
