@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\ApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -386,13 +387,17 @@ class OrganizationManagementController extends BaseApiController
 
     private function isManagementEmailEnabled(string $key, bool $default = true): bool
     {
-        if (! Schema::hasTable('system_settings')) {
+        if (! $this->hasSystemSettingsTable()) {
             return $default;
         }
 
-        $value = SystemSetting::query()
-            ->where('key', self::MANAGEMENT_EMAIL_SETTINGS_KEY)
-            ->value('value');
+        try {
+            $value = SystemSetting::query()
+                ->where('key', self::MANAGEMENT_EMAIL_SETTINGS_KEY)
+                ->value('value');
+        } catch (QueryException) {
+            return $default;
+        }
 
         if (! is_array($value) || ! array_key_exists($key, $value)) {
             return $default;
@@ -406,14 +411,27 @@ class OrganizationManagementController extends BaseApiController
      */
     private function mainSmtpSettingsRaw(): array
     {
-        if (! Schema::hasTable('system_settings')) {
+        if (! $this->hasSystemSettingsTable()) {
             return [];
         }
 
-        $value = SystemSetting::query()
-            ->where('key', self::MAIN_SMTP_SETTINGS_KEY)
-            ->value('value');
+        try {
+            $value = SystemSetting::query()
+                ->where('key', self::MAIN_SMTP_SETTINGS_KEY)
+                ->value('value');
+        } catch (QueryException) {
+            return [];
+        }
 
         return is_array($value) ? $value : [];
+    }
+
+    private function hasSystemSettingsTable(): bool
+    {
+        try {
+            return Schema::hasTable('system_settings');
+        } catch (QueryException) {
+            return false;
+        }
     }
 }

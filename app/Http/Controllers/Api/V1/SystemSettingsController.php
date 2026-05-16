@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\SystemSetting;
 use App\Support\ApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -36,7 +37,12 @@ class SystemSettingsController extends BaseApiController
         }
 
         $settings = $this->defaultManagementEmailSettings();
-        $stored = SystemSetting::query()->where('key', self::MANAGEMENT_EMAIL_SETTINGS_KEY)->value('value');
+
+        if (! $this->hasSystemSettingsTable()) {
+            return ApiResponse::success($settings);
+        }
+
+        $stored = $this->safeSystemSettingValue(self::MANAGEMENT_EMAIL_SETTINGS_KEY);
 
         if (is_array($stored)) {
             $settings['notify_organization_created'] = (bool) ($stored['notify_organization_created'] ?? $settings['notify_organization_created']);
@@ -228,14 +234,27 @@ class SystemSettingsController extends BaseApiController
             return [];
         }
 
-        $stored = SystemSetting::query()->where('key', self::MAIN_SMTP_SETTINGS_KEY)->value('value');
+        $stored = $this->safeSystemSettingValue(self::MAIN_SMTP_SETTINGS_KEY);
 
         return is_array($stored) ? $stored : [];
     }
 
     private function hasSystemSettingsTable(): bool
     {
-        return Schema::hasTable('system_settings');
+        try {
+            return Schema::hasTable('system_settings');
+        } catch (QueryException) {
+            return false;
+        }
+    }
+
+    private function safeSystemSettingValue(string $key): mixed
+    {
+        try {
+            return SystemSetting::query()->where('key', $key)->value('value');
+        } catch (QueryException) {
+            return null;
+        }
     }
 
     /**

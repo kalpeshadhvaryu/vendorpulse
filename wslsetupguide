@@ -1,0 +1,16 @@
+Project Commands: VendorPulse
+1. Start Docker Infrastructure:
+
+  • Open WSL: `wsl -d Ubuntu`
+
+  • Navigate to project: `cd ~/projects/vendorpulse`
+
+  • Run: `docker compose up -d`
+
+2. Backend (Laravel):
+
+  • In VS Code terminal: `php artisan serve`
+
+3. Frontend (Web Dashboard):
+
+  • In dashboard directory: `npm run dev`
