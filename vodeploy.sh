@@ -21,6 +21,7 @@ git reset --hard "origin/${FRONTEND_BRANCH:-kalpesh}"
 echo "🗃️ Refreshing Backend State..."
 cd "$ROOT_DIR"
 
+# Targets ONLY your specific compose configuration files to safe-guard exportdoc
 COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 "${COMPOSE_CMD[@]}" up -d app horizon scheduler
 
@@ -28,23 +29,20 @@ COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 echo "🔒 Restoring folder permissions inside container..."
 "${COMPOSE_CMD[@]}" exec -T --user root app sh -c '
     mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/cache /var/www/html/storage/framework/sessions /var/www/html/storage/framework/views /var/www/html/bootstrap/cache
+    chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
     chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 '
 
-# Fast cache refresh + ALWAYS run migrations on every deploy
 echo "🧩 Running database migrations (always)..."
-APP_KEY_VALUE="$("${COMPOSE_CMD[@]}" exec -T app php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $kernel = $app->make(Illuminate\\Contracts\\Console\\Kernel::class); $kernel->bootstrap(); echo (string) config("app.key");')"
-if [ -z "$APP_KEY_VALUE" ]; then
-    echo "❌ APP_KEY is missing inside app container. Set APP_KEY before deploy."
+
+# ✅ FIX: Safely parse APP_KEY from .env directly without booting Laravel 
+if ! grep -q "APP_KEY=" .env || [ -z "$(grep "APP_KEY=" .env | cut -d '=' -f2)" ]; then
+    echo "❌ APP_KEY is missing inside .env. Set APP_KEY before deploy."
     exit 1
 fi
 
-if [ -t 0 ]; then
-    docker exec -it vendorpulse-app-1 php artisan optimize:clear
-else
-    docker exec vendorpulse-app-1 php artisan optimize:clear
-fi
+# Clean execution logic without TTY check issues
+"${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear --no-interaction
 "${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force --no-interaction
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize --no-interaction
 
