@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('organizations/{organization}/force', [OrganizationManagementController::class, 'forceDestroy']);
         Route::post('organizations/{organization}/members', [OrganizationManagementController::class, 'attachMember']);
         Route::post('organizations/{organization}/users', [OrganizationManagementController::class, 'createUser']);
+        Route::patch('organizations/users/{user}/global-access', [OrganizationManagementController::class, 'updateUserGlobalAccess']);
         Route::get('settings/management-email-notifications', [SystemSettingsController::class, 'showManagementEmailNotifications']);
         Route::put('settings/management-email-notifications', [SystemSettingsController::class, 'updateManagementEmailNotifications']);
         Route::get('settings/main-smtp', [SystemSettingsController::class, 'showMainSmtpSettings']);

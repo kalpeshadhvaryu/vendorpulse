@@ -210,6 +210,26 @@ class OrganizationManagementController extends BaseApiController
         );
     }
 
+    public function updateUserGlobalAccess(Request $request, User $user): JsonResponse
+    {
+        Gate::authorize('viewUsers', Organization::class);
+
+        $validated = $request->validate([
+            'is_admin' => ['required', 'boolean'],
+        ]);
+
+        $user->forceFill([
+            'is_admin' => (bool) $validated['is_admin'],
+        ])->save();
+
+        return ApiResponse::success(
+            new UserResource($user->fresh(['organizations', 'defaultOrganization'])),
+            (bool) $validated['is_admin']
+                ? 'Global access granted.'
+                : 'Global access revoked.'
+        );
+    }
+
     public function destroy(Request $request, Organization $organization): JsonResponse
     {
         Gate::authorize('delete', $organization);

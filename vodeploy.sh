@@ -17,12 +17,20 @@ cd "$FRONTEND_DIR"
 git fetch origin "${FRONTEND_BRANCH:-kalpesh}"
 git reset --hard "origin/${FRONTEND_BRANCH:-kalpesh}"
 
-# 2. Update Backend Containers
+# 2. Update Backend Containers & Fix Permissions immediately
 echo "🗃️ Refreshing Backend State..."
 cd "$ROOT_DIR"
 
 COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 "${COMPOSE_CMD[@]}" up -d app horizon scheduler
+
+# Force fix storage paths using the ROOT user inside the container
+echo "🔒 Restoring folder permissions inside container..."
+"${COMPOSE_CMD[@]}" exec -T --user root app sh -c '
+    mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/cache /var/www/html/storage/framework/sessions /var/www/html/storage/framework/views /var/www/html/bootstrap/cache
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+'
 
 # Fast cache refresh + ALWAYS run migrations on every deploy
 echo "🧩 Running database migrations (always)..."
@@ -44,22 +52,4 @@ npm run build
 echo "🔁 Hot-restarting PM2 Instance..."
 pm2 restart vendorpulse-frontend || pm2 start npm --name vendorpulse-frontend --cwd "$FRONTEND_DIR" -- start
 
-# =========================================================================
-# 🚀 FINAL FIX: Force Permissions & Clear Cache at the VERY END
-# =========================================================================
-echo "🔒 Running final container permission enforcement..."
-
-# 1. Force create the logs directory inside the container
-docker exec -i --user root vendorpulse-app-1 mkdir -p /var/www/html/storage/logs
-
-# 2. Change the ownership of the entire storage folder to the web server user (www-data)
-docker exec -i --user root vendorpulse-app-1 chown -R www-data:www-data /var/www/html/storage
-
-# 3. Grant proper read/write permissions to the storage directory
-docker exec -i --user root vendorpulse-app-1 chmod -R 775 /var/www/html/storage
-
-# 4. Final Application Cache Clear
-echo "🧹 Wiping final configuration caches..."
-docker exec -i vendorpulse-app-1 php artisan optimize:clear
-
-echo "✅ Quick deployment complete! App is verified and ready."
+echo "✅ Quick deployment complete!"
