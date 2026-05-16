@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
+use App\Http\Controllers\Api\V1\DomainSocialAccountController;
 use App\Http\Controllers\Api\V1\EmailMailboxController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MarketingSeoController;
@@ -53,6 +54,19 @@ Route::prefix('v1')->group(function (): void {
 
             Route::post('vapt-web-health/url-checker', [VaptWebHealthController::class, 'urlChecker']);
             Route::post('marketing-seo/on-page-audit', [MarketingSeoController::class, 'onPageAudit']);
+            Route::get('social-accounts', [DomainSocialAccountController::class, 'index']);
+            Route::post('social-accounts', [DomainSocialAccountController::class, 'store']);
+            Route::patch('social-accounts/{domain_social_account}', [DomainSocialAccountController::class, 'update']);
+            Route::delete('social-accounts/{domain_social_account}', [DomainSocialAccountController::class, 'destroy']);
         });
     });
 });
+
+Route::middleware(['auth:sanctum', 'organization.context'])
+    ->get('social-accounts', [DomainSocialAccountController::class, 'index']);
+Route::middleware(['auth:sanctum', 'organization.context'])
+    ->post('social-accounts', [DomainSocialAccountController::class, 'store']);
+Route::middleware(['auth:sanctum', 'organization.context'])
+    ->patch('social-accounts/{domain_social_account}', [DomainSocialAccountController::class, 'update']);
+Route::middleware(['auth:sanctum', 'organization.context'])
+    ->delete('social-accounts/{domain_social_account}', [DomainSocialAccountController::class, 'destroy']);

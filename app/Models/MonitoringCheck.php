@@ -63,4 +63,9 @@ class MonitoringCheck extends Model
     {
         return $this->hasMany(MonitoringLog::class);
     }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(DomainSocialAccount::class, 'monitoring_check_id');
+    }
 }
