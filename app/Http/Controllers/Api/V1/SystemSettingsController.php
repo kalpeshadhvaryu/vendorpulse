@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -52,6 +53,10 @@ class SystemSettingsController extends BaseApiController
             return ApiResponse::error('Only admins can manage system settings.', Response::HTTP_FORBIDDEN);
         }
 
+        if (! $this->hasSystemSettingsTable()) {
+            return ApiResponse::error('System settings storage is not ready. Run migrations first.', Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
         $validated = $request->validate([
             'notify_organization_created' => ['sometimes', 'boolean'],
             'notify_user_created' => ['sometimes', 'boolean'],
@@ -94,6 +99,10 @@ class SystemSettingsController extends BaseApiController
         $user = $request->user();
         if (! $user || ! $user->isAdmin()) {
             return ApiResponse::error('Only admins can manage system settings.', Response::HTTP_FORBIDDEN);
+        }
+
+        if (! $this->hasSystemSettingsTable()) {
+            return ApiResponse::error('System settings storage is not ready. Run migrations first.', Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         $validated = $request->validate([
@@ -215,9 +224,18 @@ class SystemSettingsController extends BaseApiController
      */
     private function mainSmtpSettingsRaw(): array
     {
+        if (! $this->hasSystemSettingsTable()) {
+            return [];
+        }
+
         $stored = SystemSetting::query()->where('key', self::MAIN_SMTP_SETTINGS_KEY)->value('value');
 
         return is_array($stored) ? $stored : [];
+    }
+
+    private function hasSystemSettingsTable(): bool
+    {
+        return Schema::hasTable('system_settings');
     }
 
     /**

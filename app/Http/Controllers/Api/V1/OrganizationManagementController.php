@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
@@ -363,6 +364,10 @@ class OrganizationManagementController extends BaseApiController
 
     private function isManagementEmailEnabled(string $key, bool $default = true): bool
     {
+        if (! Schema::hasTable('system_settings')) {
+            return $default;
+        }
+
         $value = SystemSetting::query()
             ->where('key', self::MANAGEMENT_EMAIL_SETTINGS_KEY)
             ->value('value');
@@ -379,6 +384,10 @@ class OrganizationManagementController extends BaseApiController
      */
     private function mainSmtpSettingsRaw(): array
     {
+        if (! Schema::hasTable('system_settings')) {
+            return [];
+        }
+
         $value = SystemSetting::query()
             ->where('key', self::MAIN_SMTP_SETTINGS_KEY)
             ->value('value');
