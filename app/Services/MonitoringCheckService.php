@@ -4,12 +4,16 @@ namespace App\Services;
 
 use App\Models\MonitoringCheck;
 use App\Models\MonitoringLog;
+use App\Models\Organization;
 use App\Models\User;
+use App\Models\Vendor;
 use App\Repositories\Contracts\MonitoringCheckRepositoryInterface;
 use App\SiteMonitoring\Enums\MonitoringLogStatus;
 use App\Support\Organization\CurrentOrganization;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class MonitoringCheckService
 {
@@ -294,7 +298,32 @@ class MonitoringCheckService
 
     public function create(array $data, User $actor): MonitoringCheck
     {
-        $data['organization_id'] = $this->currentOrganization->id();
+        $resolution = $this->resolveOrganizationContext($data, $actor);
+        $organizationId = $resolution['organization_id'];
+
+        if ($this->shouldLogOrganizationFallback($resolution['source'])) {
+            Log::notice('Monitoring check create used organization fallback resolution.', [
+                'actor_id' => $actor->id,
+                'organization_id' => $organizationId,
+                'source' => $resolution['source'],
+                'environment' => app()->environment(),
+            ]);
+        }
+
+        if (! $organizationId) {
+            Log::warning('Monitoring check create failed due to unresolved organization context.', [
+                'actor_id' => $actor->id,
+                'source' => $resolution['source'],
+                'environment' => app()->environment(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'organization_id' => 'Unable to resolve organization context. Select an organization and try again.',
+            ]);
+        }
+
+        $data['organization_id'] = $organizationId;
+        $data['vendor_id'] = $this->resolveVendorId($data, $organizationId);
         $data['created_by'] = $actor->id;
         $data['updated_by'] = $actor->id;
 
@@ -305,6 +334,92 @@ class MonitoringCheckService
         }
 
         return $this->monitoringChecks->create($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{organization_id: ?string, source: string}
+     */
+    private function resolveOrganizationContext(array $data, User $actor): array
+    {
+        if (! empty($data['organization_id'])) {
+            return [
+                'organization_id' => (string) $data['organization_id'],
+                'source' => 'payload',
+            ];
+        }
+
+        $current = $this->currentOrganization->id();
+        if ($current) {
+            return [
+                'organization_id' => $current,
+                'source' => 'current_context',
+            ];
+        }
+
+        if (! empty($actor->default_organization_id)) {
+            return [
+                'organization_id' => (string) $actor->default_organization_id,
+                'source' => 'user_default',
+            ];
+        }
+
+        $firstMembershipId = $actor->organizations()
+            ->orderBy('organizations.created_at')
+            ->value('organizations.id');
+
+        if (is_string($firstMembershipId) && $firstMembershipId !== '') {
+            return [
+                'organization_id' => $firstMembershipId,
+                'source' => 'membership_first',
+            ];
+        }
+
+        // Local/dev safety net only: pick the first available organization to avoid null insert crashes.
+        if (app()->environment(['local', 'testing'])) {
+            $fallback = Organization::query()->orderBy('created_at')->value('id');
+
+            return [
+                'organization_id' => is_string($fallback) && $fallback !== '' ? $fallback : null,
+                'source' => 'dev_database_fallback',
+            ];
+        }
+
+        return [
+            'organization_id' => null,
+            'source' => 'unresolved',
+        ];
+    }
+
+    private function shouldLogOrganizationFallback(string $source): bool
+    {
+        return in_array($source, ['user_default', 'membership_first', 'dev_database_fallback'], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveVendorId(array $data, string $organizationId): ?string
+    {
+        $incoming = $data['vendor_id'] ?? null;
+        if (is_string($incoming) && trim($incoming) !== '') {
+            return $incoming;
+        }
+
+        // Keep vendor optional by default. If exactly one vendor exists in this org,
+        // use it as a safe convenience fallback.
+        $candidateVendorIds = Vendor::query()
+            ->where('company_id', $organizationId)
+            ->limit(2)
+            ->pluck('id');
+
+        if ($candidateVendorIds->count() === 1) {
+            $id = $candidateVendorIds->first();
+
+            return is_string($id) && $id !== '' ? $id : null;
+        }
+
+        return null;
     }
 
     public function update(MonitoringCheck $monitoringCheck, array $data, User $actor): MonitoringCheck

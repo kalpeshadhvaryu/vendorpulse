@@ -49,6 +49,11 @@ return [
     'ssl_connect_retry_delay_ms' => (int) env('SITE_MONITORING_SSL_CONNECT_RETRY_DELAY_MS', 500),
 
     /**
+     * TCP connect probe timeout in milliseconds (used by tcp/ping check types).
+     */
+    'tcp_timeout_ms' => (int) env('SITE_MONITORING_TCP_TIMEOUT_MS', 5000),
+
+    /**
      * Queue job retries when handle() throws (DB, lock, etc.). Probe failures do not throw.
      * Backoff list in seconds, comma-separated.
      */

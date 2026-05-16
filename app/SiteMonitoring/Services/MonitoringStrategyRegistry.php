@@ -6,6 +6,7 @@ use App\Models\MonitoringCheck;
 use App\SiteMonitoring\Checks\DomainExpiryCheckStrategy;
 use App\SiteMonitoring\Checks\ServerApiCheckStrategy;
 use App\SiteMonitoring\Checks\SslCertificateCheckStrategy;
+use App\SiteMonitoring\Checks\TcpPortCheckStrategy;
 use App\SiteMonitoring\Checks\UnsupportedCheckStrategy;
 use App\SiteMonitoring\Checks\UptimeHttpCheckStrategy;
 use App\SiteMonitoring\Contracts\CheckStrategyInterface;
@@ -17,6 +18,7 @@ class MonitoringStrategyRegistry
         protected SslCertificateCheckStrategy $ssl,
         protected DomainExpiryCheckStrategy $domain,
         protected ServerApiCheckStrategy $server,
+        protected TcpPortCheckStrategy $tcp,
         protected UnsupportedCheckStrategy $unsupported,
     ) {}
 
@@ -27,6 +29,7 @@ class MonitoringStrategyRegistry
             'ssl', 'tls' => $this->ssl,
             'domain', 'whois' => $this->domain,
             'server' => $this->server,
+            'tcp', 'ping' => $this->tcp,
             default => $this->unsupported,
         };
     }

@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware('organization.context')->group(function (): void {
             Route::get('dashboard/trends', [DashboardAnalyticsController::class, 'trends']);
+            Route::get('dashboard/monitoring-create-fallbacks', [DashboardAnalyticsController::class, 'monitoringCreateFallbacks']);
             Route::post('vendors/{id}/restore', [VendorController::class, 'restore']);
             Route::apiResource('vendors', VendorController::class);
             Route::apiResource('vendor-emails', VendorEmailController::class);

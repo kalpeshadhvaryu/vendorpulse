@@ -7,8 +7,10 @@ use App\Models\MonitoringLog;
 use App\Support\ApiResponse;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Arr;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 class DashboardAnalyticsController extends BaseApiController
 {
@@ -118,5 +120,134 @@ class DashboardAnalyticsController extends BaseApiController
             'monitoring' => $monitoring,
             'invoices' => $invoices,
         ]);
+    }
+
+    public function monitoringCreateFallbacks(Request $request): JsonResponse
+    {
+        $days = max(7, min((int) $request->query('days', 30), 90));
+        $to = now()->endOfDay();
+        $from = now()->subDays($days - 1)->startOfDay();
+        $organizationId = $this->organizationId();
+
+        $series = [];
+        foreach (CarbonPeriod::create($from, '1 day', $to) as $date) {
+            /** @var Carbon $date */
+            $series[$date->toDateString()] = [
+                'date' => $date->toDateString(),
+                'count' => 0,
+                'by_source' => [
+                    'user_default' => 0,
+                    'membership_first' => 0,
+                    'dev_database_fallback' => 0,
+                    'other' => 0,
+                ],
+            ];
+        }
+
+        foreach ($this->candidateLaravelLogFiles() as $logFile) {
+            $this->accumulateFallbackSeriesFromFile($logFile, $organizationId, $from, $to, $series);
+        }
+
+        $seriesValues = array_values($series);
+        $total = array_sum(array_column($seriesValues, 'count'));
+
+        return ApiResponse::success([
+            'range' => [
+                'from' => $from->toIso8601String(),
+                'to' => $to->toIso8601String(),
+                'days' => $days,
+            ],
+            'total' => $total,
+            'series' => $seriesValues,
+        ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function candidateLaravelLogFiles(): array
+    {
+        $patterns = [
+            storage_path('logs/laravel.log'),
+            storage_path('logs/laravel-*.log'),
+        ];
+
+        $files = [];
+        foreach ($patterns as $pattern) {
+            $matches = glob($pattern);
+            if ($matches === false) {
+                continue;
+            }
+
+            foreach ($matches as $match) {
+                if (is_file($match) && is_readable($match)) {
+                    $files[] = $match;
+                }
+            }
+        }
+
+        return array_values(array_unique($files));
+    }
+
+    /**
+     * @param  array<string, array{date: string, count: int, by_source: array{user_default: int, membership_first: int, dev_database_fallback: int, other: int}}>  $series
+     */
+    private function accumulateFallbackSeriesFromFile(string $logFile, string $organizationId, Carbon $from, Carbon $to, array &$series): void
+    {
+        $handle = fopen($logFile, 'rb');
+        if ($handle === false) {
+            return;
+        }
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                if (! str_contains($line, 'Monitoring check create used organization fallback resolution.')) {
+                    continue;
+                }
+
+                if (! preg_match('/^\[(?<timestamp>[^\]]+)\]/', $line, $matches)) {
+                    continue;
+                }
+
+                try {
+                    $timestamp = Carbon::createFromFormat('Y-m-d H:i:s', (string) $matches['timestamp'], config('app.timezone'));
+                } catch (RuntimeException) {
+                    continue;
+                }
+
+                if ($timestamp->lt($from) || $timestamp->gt($to)) {
+                    continue;
+                }
+
+                $contextStart = strpos($line, '{');
+                if ($contextStart === false) {
+                    continue;
+                }
+
+                $context = json_decode(substr($line, $contextStart), true);
+                if (! is_array($context)) {
+                    continue;
+                }
+
+                if ((string) Arr::get($context, 'organization_id', '') !== $organizationId) {
+                    continue;
+                }
+
+                $dayKey = $timestamp->toDateString();
+                if (! isset($series[$dayKey])) {
+                    continue;
+                }
+
+                $source = (string) Arr::get($context, 'source', 'other');
+                $bucket = in_array($source, ['user_default', 'membership_first', 'dev_database_fallback'], true)
+                    ? $source
+                    : 'other';
+
+                $series[$dayKey]['count']++;
+                $series[$dayKey]['by_source'][$bucket]++;
+            }
+        } finally {
+            fclose($handle);
+        }
     }
 }
