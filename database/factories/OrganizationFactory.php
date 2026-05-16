@@ -19,6 +19,8 @@ class OrganizationFactory extends Factory
         return [
             'name' => $name,
             'slug' => null,
+            'phone_country_code' => null,
+            'phone_number' => null,
             'settings' => null,
             'created_by' => null,
             'updated_by' => null,

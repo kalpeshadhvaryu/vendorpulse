@@ -18,6 +18,8 @@ class OrganizationResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
+            'phone_country_code' => $this->phone_country_code,
+            'phone_number' => $this->phone_number,
             'role' => $this->whenPivotLoaded('organization_user', fn () => $this->pivot?->role),
             'settings' => $this->settings,
             'created_at' => $this->created_at?->toIso8601String(),

@@ -17,6 +17,11 @@ class OrganizationPolicy
         return $user->isAdmin();
     }
 
+    public function update(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
+
     public function attachMember(User $user, Organization $organization): bool
     {
         return $user->isAdmin();

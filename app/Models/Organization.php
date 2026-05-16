@@ -19,6 +19,8 @@ class Organization extends Model
     protected $fillable = [
         'name',
         'slug',
+        'phone_country_code',
+        'phone_number',
         'settings',
         'created_by',
         'updated_by',

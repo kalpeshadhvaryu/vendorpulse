@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -66,9 +67,17 @@ class OrganizationManagementController extends BaseApiController
         Gate::authorize('create', Organization::class);
         $isAdmin = $actor->isAdmin();
 
+        if ($request->filled('slug')) {
+            $request->merge([
+                'slug' => $this->normalizeSlug((string) $request->input('slug')),
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:organizations,slug'],
+            'phone_country_code' => ['nullable', 'string', 'max:8', 'regex:/^\+[1-9][0-9]{0,3}$/'],
+            'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]{6,15}$/'],
             'settings' => ['nullable', 'array'],
             'owner_user_email' => ['nullable', 'string', 'email', 'max:255'],
             'set_owner_default' => ['sometimes', 'boolean'],
@@ -97,6 +106,8 @@ class OrganizationManagementController extends BaseApiController
             $organization = Organization::query()->create([
                 'name' => $validated['name'],
                 'slug' => $validated['slug'] ?? null,
+                'phone_country_code' => $validated['phone_country_code'] ?? null,
+                'phone_number' => $validated['phone_number'] ?? null,
                 'settings' => $validated['settings'] ?? null,
                 'created_by' => $actor->id,
                 'updated_by' => $actor->id,
@@ -124,6 +135,41 @@ class OrganizationManagementController extends BaseApiController
             'Organization created.',
             Response::HTTP_CREATED
         );
+    }
+
+    public function update(Request $request, Organization $organization): JsonResponse
+    {
+        Gate::authorize('update', $organization);
+
+        $request->merge([
+            'slug' => $this->normalizeSlug((string) $request->input('slug', '')),
+        ]);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['required', 'string', 'max:255', 'unique:organizations,slug,'.$organization->id],
+            'phone_country_code' => ['nullable', 'string', 'max:8', 'regex:/^\+[1-9][0-9]{0,3}$/'],
+            'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]{6,15}$/'],
+            'settings' => ['nullable', 'array'],
+        ]);
+
+        $organization->forceFill([
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'phone_country_code' => $validated['phone_country_code'] ?? null,
+            'phone_number' => $validated['phone_number'] ?? null,
+            'settings' => $validated['settings'] ?? $organization->settings,
+            'updated_by' => $request->user()?->id,
+        ])->save();
+
+        return ApiResponse::success(new OrganizationResource($organization->fresh()), 'Organization updated.');
+    }
+
+    private function normalizeSlug(string $value): string
+    {
+        return (string) Str::of($value)
+            ->trim()
+            ->slug('-');
     }
 
     public function attachMember(Request $request, Organization $organization): JsonResponse
