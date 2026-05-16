@@ -75,6 +75,12 @@ ensure_frontend_dependencies() {
 	fi
 }
 
+ensure_backend_writable_paths() {
+	# Prepare writable Laravel runtime paths on the host bind mount first.
+	mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
+	chmod -R a+rwX storage bootstrap/cache
+}
+
 echo "📦 Validating git worktrees..."
 require_clean_git_tree "$ROOT_DIR" "Backend repository"
 require_clean_git_tree "$FRONTEND_DIR" "Frontend repository"
@@ -85,9 +91,10 @@ pull_branch_ff_only "$FRONTEND_DIR" "$FRONTEND_BRANCH" "Frontend"
 
 echo "🗃️ Running backend updates..."
 cd "$ROOT_DIR"
+ensure_backend_writable_paths
 COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 "${COMPOSE_CMD[@]}" up -d app horizon scheduler
-"${COMPOSE_CMD[@]}" exec -T app sh -lc 'mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache && chmod -R ug+rwX storage bootstrap/cache && (chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true)'
+"${COMPOSE_CMD[@]}" exec -T app sh -lc 'mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache && chmod -R a+rwX storage bootstrap/cache && (chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true)'
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear
 "${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize
