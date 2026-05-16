@@ -7,6 +7,7 @@ use App\Models\Vendor;
 use App\Repositories\Contracts\VendorRepositoryInterface;
 use App\Support\Organization\CurrentOrganization;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 
 class VendorService
 {
@@ -35,7 +36,15 @@ class VendorService
 
     public function create(array $data, User $actor): Vendor
     {
-        $data['company_id'] = $this->currentOrganization->id();
+        $companyId = $this->currentOrganization->id() ?: $actor->default_organization_id;
+
+        if (! $companyId) {
+            throw ValidationException::withMessages([
+                'organization' => 'Organization context is required to create a vendor. Select an organization and try again.',
+            ]);
+        }
+
+        $data['company_id'] = $companyId;
         $data['created_by'] = $actor->id;
         $data['updated_by'] = $actor->id;
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\SystemSetting;
 use App\Support\ApiResponse;
+use Illuminate\Encryption\MissingAppKeyException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,6 +101,31 @@ class SystemSettingsController extends BaseApiController
         return ApiResponse::success($this->sanitizeMainSmtpSettings($this->mainSmtpSettingsRaw()));
     }
 
+    public function startupHealth(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || ! $user->isAdmin()) {
+            return ApiResponse::error('Only admins can view startup health.', Response::HTTP_FORBIDDEN);
+        }
+
+        $checks = [
+            'app_key_configured' => trim((string) config('app.key')) !== '',
+            'system_settings_table_ready' => $this->hasSystemSettingsTable(),
+            'notifications_table_ready' => $this->hasTableSafe('notifications'),
+        ];
+
+        $healthy = ! in_array(false, $checks, true);
+
+        return ApiResponse::success(
+            [
+                'healthy' => $healthy,
+                'checks' => $checks,
+            ],
+            $healthy ? 'Startup health OK.' : 'Startup health has issues.',
+            $healthy ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE
+        );
+    }
+
     public function updateMainSmtpSettings(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -131,7 +157,14 @@ class SystemSettingsController extends BaseApiController
         if (array_key_exists('password', $validated)) {
             $incomingPassword = (string) ($validated['password'] ?? '');
             if ($incomingPassword !== '') {
-                $passwordEncrypted = Crypt::encryptString($incomingPassword);
+                try {
+                    $passwordEncrypted = Crypt::encryptString($incomingPassword);
+                } catch (MissingAppKeyException) {
+                    return ApiResponse::error(
+                        'APP_KEY is missing on the server. Please configure APP_KEY before saving SMTP password.',
+                        Response::HTTP_SERVICE_UNAVAILABLE
+                    );
+                }
             }
         }
 
@@ -241,8 +274,13 @@ class SystemSettingsController extends BaseApiController
 
     private function hasSystemSettingsTable(): bool
     {
+        return $this->hasTableSafe('system_settings');
+    }
+
+    private function hasTableSafe(string $table): bool
+    {
         try {
-            return Schema::hasTable('system_settings');
+            return Schema::hasTable($table);
         } catch (QueryException) {
             return false;
         }

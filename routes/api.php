@@ -33,6 +33,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('organizations/users/{user}/global-access', [OrganizationManagementController::class, 'updateUserGlobalAccess']);
         Route::get('settings/management-email-notifications', [SystemSettingsController::class, 'showManagementEmailNotifications']);
         Route::put('settings/management-email-notifications', [SystemSettingsController::class, 'updateManagementEmailNotifications']);
+        Route::get('settings/startup-health', [SystemSettingsController::class, 'startupHealth']);
         Route::get('settings/main-smtp', [SystemSettingsController::class, 'showMainSmtpSettings']);
         Route::put('settings/main-smtp', [SystemSettingsController::class, 'updateMainSmtpSettings']);
         Route::post('settings/main-smtp/test', [SystemSettingsController::class, 'sendMainSmtpTestEmail']);
