@@ -28,8 +28,8 @@ COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 echo "🔒 Restoring folder permissions inside container..."
 "${COMPOSE_CMD[@]}" exec -T --user root app sh -c '
     mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/cache /var/www/html/storage/framework/sessions /var/www/html/storage/framework/views /var/www/html/bootstrap/cache
-    chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
     chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 '
 
 # Fast cache refresh + ALWAYS run migrations on every deploy
