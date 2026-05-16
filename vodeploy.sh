@@ -34,11 +34,7 @@ echo "🔒 Restoring folder permissions inside container..."
 
 # Fast cache refresh + ALWAYS run migrations on every deploy
 echo "🧩 Running database migrations (always)..."
-if [ -t 0 ]; then
-    docker exec -it vendorpulse-app-1 php artisan optimize:clear
-else
-    docker exec vendorpulse-app-1 php artisan optimize:clear
-fi
+"${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear --no-interaction
 "${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force --no-interaction
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize --no-interaction
 
