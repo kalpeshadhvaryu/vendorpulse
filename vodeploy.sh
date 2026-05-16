@@ -32,9 +32,11 @@ echo "🔒 Restoring folder permissions inside container..."
     chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 '
 
-# Fast cache refresh
-"${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear
-"${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force
+# Fast cache refresh + ALWAYS run migrations on every deploy
+echo "🧩 Running database migrations (always)..."
+"${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear --no-interaction
+"${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force --no-interaction
+"${COMPOSE_CMD[@]}" exec -T app php artisan optimize --no-interaction
 
 # 3. Build Frontend
 echo "🧱 Incrementing Frontend Build..."
