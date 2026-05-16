@@ -63,6 +63,16 @@ class User extends Authenticatable
         return $this->organizations()->wherePivot('role', $role)->exists();
     }
 
+    public function hasOrganizationRoleInOrganization(string $organizationId, string|array $roles): bool
+    {
+        $roleList = is_array($roles) ? $roles : [$roles];
+
+        return $this->organizations()
+            ->where('organizations.id', $organizationId)
+            ->wherePivotIn('role', $roleList)
+            ->exists();
+    }
+
     /**
      * Determine if the user is a Global Admin.
      */

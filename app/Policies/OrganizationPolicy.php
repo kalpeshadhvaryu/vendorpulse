@@ -34,7 +34,8 @@ class OrganizationPolicy
 
     public function manageSmtp(User $user, Organization $organization): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin()
+            || $user->hasOrganizationRoleInOrganization((string) $organization->id, ['owner', 'admin']);
     }
 
     public function delete(User $user, Organization $organization): bool

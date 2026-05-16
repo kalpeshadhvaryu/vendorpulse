@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1\EmailMailboxes;
 
 use App\EmailMonitoring\Enums\MailboxDriver;
+use App\Support\Organization\CurrentOrganization;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +11,21 @@ class StoreEmailMailboxRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        $organizationId = app(CurrentOrganization::class)->id();
+        if (! $organizationId) {
+            return false;
+        }
+
+        return $user->hasOrganizationRoleInOrganization((string) $organizationId, ['owner', 'admin']);
     }
 
     /**

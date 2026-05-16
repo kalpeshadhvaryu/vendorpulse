@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->seedGlobalAdmin();
+        $this->call(ManagementEmailSettingsSeeder::class);
 
         $user = User::query()->where('email', self::DEV_EMAIL)->first();
 

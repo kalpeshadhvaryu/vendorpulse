@@ -5,16 +5,23 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Resources\Api\V1\OrganizationResource;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Models\Organization;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class OrganizationManagementController extends BaseApiController
 {
+    private const MANAGEMENT_EMAIL_SETTINGS_KEY = 'management_email_notifications';
+    private const MAIN_SMTP_SETTINGS_KEY = 'main_smtp_settings';
+
     public function users(Request $request): JsonResponse
     {
         Gate::authorize('viewUsers', Organization::class);
@@ -84,7 +91,7 @@ class OrganizationManagementController extends BaseApiController
             );
         }
 
-        return DB::transaction(function () use ($validated, $actor, $owner): JsonResponse {
+        $organization = DB::transaction(function () use ($validated, $actor, $owner): Organization {
             $organization = Organization::query()->create([
                 'name' => $validated['name'],
                 'slug' => $validated['slug'] ?? null,
@@ -105,12 +112,16 @@ class OrganizationManagementController extends BaseApiController
                 $owner->forceFill(['default_organization_id' => $organization->id])->save();
             }
 
-            return ApiResponse::success(
-                new OrganizationResource($organization),
-                'Organization created.',
-                Response::HTTP_CREATED
-            );
+            return $organization;
         });
+
+        $this->sendOrganizationCreatedEmail($owner, $organization, $actor);
+
+        return ApiResponse::success(
+            new OrganizationResource($organization),
+            'Organization created.',
+            Response::HTTP_CREATED
+        );
     }
 
     public function attachMember(Request $request, Organization $organization): JsonResponse
@@ -187,6 +198,8 @@ class OrganizationManagementController extends BaseApiController
             $user->forceFill(['default_organization_id' => $organization->id])->save();
         }
 
+        $this->sendUserCreatedEmail($user, $organization, $request->user());
+
         return ApiResponse::success(
             new UserResource($user->fresh(['organizations', 'defaultOrganization'])),
             'User created and assigned to organization.',
@@ -233,5 +246,143 @@ class OrganizationManagementController extends BaseApiController
         });
 
         return ApiResponse::success(null, 'Organization permanently deleted.');
+    }
+
+    private function sendOrganizationCreatedEmail(User $recipient, Organization $organization, User $actor): void
+    {
+        if (! $this->isManagementEmailEnabled('notify_organization_created', true)) {
+            return;
+        }
+
+        if (! filter_var($recipient->email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $appName = (string) config('app.name', 'VendorPulse');
+        $dashboardUrl = (string) config('app.url', '');
+        $subject = sprintf('[%s] Organization created: %s', $appName, $organization->name);
+        $bodyLines = [
+            sprintf('Hello %s,', $recipient->name),
+            '',
+            sprintf('A new organization "%s" was created in %s.', $organization->name, $appName),
+            sprintf('Created by: %s (%s)', $actor->name, $actor->email),
+            sprintf('Organization ID: %s', $organization->id),
+        ];
+
+        if ($dashboardUrl !== '') {
+            $bodyLines[] = sprintf('Dashboard: %s', $dashboardUrl);
+        }
+
+        $bodyLines[] = '';
+        $bodyLines[] = 'If you were not expecting this change, contact your administrator.';
+
+        $this->sendMainVendorPulseEmail($recipient->email, $subject, implode("\n", $bodyLines));
+    }
+
+    private function sendUserCreatedEmail(User $recipient, Organization $organization, User $actor): void
+    {
+        if (! $this->isManagementEmailEnabled('notify_user_created', true)) {
+            return;
+        }
+
+        if (! filter_var($recipient->email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $appName = (string) config('app.name', 'VendorPulse');
+        $dashboardUrl = (string) config('app.url', '');
+        $subject = sprintf('[%s] Your account is ready', $appName);
+        $bodyLines = [
+            sprintf('Hello %s,', $recipient->name),
+            '',
+            sprintf('Your account has been created in %s.', $appName),
+            sprintf('Organization: %s', $organization->name),
+            sprintf('Created by: %s (%s)', $actor->name, $actor->email),
+            'Use your assigned credentials to sign in.',
+        ];
+
+        if ($dashboardUrl !== '') {
+            $bodyLines[] = sprintf('Sign in: %s', $dashboardUrl);
+        }
+
+        $bodyLines[] = '';
+        $bodyLines[] = 'If this was unexpected, contact your administrator.';
+
+        $this->sendMainVendorPulseEmail($recipient->email, $subject, implode("\n", $bodyLines));
+    }
+
+    private function sendMainVendorPulseEmail(string $to, string $subject, string $body): void
+    {
+        try {
+            $mailerName = (string) config('mail.default', 'smtp');
+            $smtp = $this->mainSmtpSettingsRaw();
+
+            if (($smtp['host'] ?? null) !== null && ($smtp['from_address'] ?? null) !== null) {
+                $runtimeMailer = 'main_runtime_smtp';
+                $password = null;
+
+                if (! empty($smtp['password'])) {
+                    try {
+                        $password = Crypt::decryptString((string) $smtp['password']);
+                    } catch (Throwable) {
+                        $password = null;
+                    }
+                }
+
+                config([
+                    "mail.mailers.{$runtimeMailer}" => [
+                        'transport' => 'smtp',
+                        'host' => $smtp['host'],
+                        'port' => $smtp['port'] ?? 587,
+                        'username' => $smtp['username'] ?? null,
+                        'password' => $password,
+                        'encryption' => $smtp['encryption'] ?? null,
+                        'timeout' => $smtp['timeout'] ?? null,
+                        'local_domain' => $smtp['local_domain'] ?? null,
+                    ],
+                ]);
+
+                $mailerName = $runtimeMailer;
+            }
+
+            Mail::mailer($mailerName)->raw($body, function ($message) use ($to, $subject, $smtp): void {
+                $message->to($to)->subject($subject);
+
+                if (($smtp['from_address'] ?? null) !== null) {
+                    $message->from((string) $smtp['from_address'], (string) ($smtp['from_name'] ?? config('app.name', 'VendorPulse')));
+                }
+
+                if (($smtp['reply_to_address'] ?? null) !== null) {
+                    $message->replyTo((string) $smtp['reply_to_address'], (string) ($smtp['reply_to_name'] ?? ''));
+                }
+            });
+        } catch (Throwable) {
+            // Notification delivery failures should not block management operations.
+        }
+    }
+
+    private function isManagementEmailEnabled(string $key, bool $default = true): bool
+    {
+        $value = SystemSetting::query()
+            ->where('key', self::MANAGEMENT_EMAIL_SETTINGS_KEY)
+            ->value('value');
+
+        if (! is_array($value) || ! array_key_exists($key, $value)) {
+            return $default;
+        }
+
+        return (bool) $value[$key];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mainSmtpSettingsRaw(): array
+    {
+        $value = SystemSetting::query()
+            ->where('key', self::MAIN_SMTP_SETTINGS_KEY)
+            ->value('value');
+
+        return is_array($value) ? $value : [];
     }
 }

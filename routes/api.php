@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\MonitoringCheckController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrganizationManagementController;
 use App\Http\Controllers\Api\V1\OrganizationSmtpSettingsController;
+use App\Http\Controllers\Api\V1\SystemSettingsController;
 use App\Http\Controllers\Api\V1\VendorController;
 use App\Http\Controllers\Api\V1\VendorEmailController;
 use App\Http\Controllers\Api\V1\VaptWebHealthController;
@@ -29,6 +30,11 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('organizations/{organization}/force', [OrganizationManagementController::class, 'forceDestroy']);
         Route::post('organizations/{organization}/members', [OrganizationManagementController::class, 'attachMember']);
         Route::post('organizations/{organization}/users', [OrganizationManagementController::class, 'createUser']);
+        Route::get('settings/management-email-notifications', [SystemSettingsController::class, 'showManagementEmailNotifications']);
+        Route::put('settings/management-email-notifications', [SystemSettingsController::class, 'updateManagementEmailNotifications']);
+        Route::get('settings/main-smtp', [SystemSettingsController::class, 'showMainSmtpSettings']);
+        Route::put('settings/main-smtp', [SystemSettingsController::class, 'updateMainSmtpSettings']);
+        Route::post('settings/main-smtp/test', [SystemSettingsController::class, 'sendMainSmtpTestEmail']);
 
         Route::middleware('organization.context')->group(function (): void {
             Route::get('dashboard/trends', [DashboardAnalyticsController::class, 'trends']);
