@@ -171,6 +171,7 @@ class OrganizationManagementController extends BaseApiController
             'password' => ['required', 'string', 'min:8'],
             'timezone' => ['nullable', 'string', 'max:64'],
             'role' => ['sometimes', 'string', 'in:member,owner,admin'],
+            'is_admin' => ['sometimes', 'boolean'],
             'set_default' => ['sometimes', 'boolean'],
             'email_verified' => ['sometimes', 'boolean'],
         ]);
@@ -184,6 +185,7 @@ class OrganizationManagementController extends BaseApiController
             'email' => mb_strtolower(trim((string) $validated['email'])),
             'password' => $validated['password'],
             'timezone' => $validated['timezone'] ?? null,
+            'is_admin' => (bool) ($validated['is_admin'] ?? false),
             'default_organization_id' => $setDefault ? $organization->id : null,
             'email_verified_at' => $emailVerified ? now() : null,
         ]);
