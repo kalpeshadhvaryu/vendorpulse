@@ -87,6 +87,7 @@ echo "🗃️ Running backend updates..."
 cd "$ROOT_DIR"
 COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 "${COMPOSE_CMD[@]}" up -d --force-recreate --no-build app horizon scheduler
+"${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear
 "${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize
 
