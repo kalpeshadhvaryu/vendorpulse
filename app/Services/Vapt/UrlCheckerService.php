@@ -10,6 +10,23 @@ use Illuminate\Support\Str;
 class UrlCheckerService
 {
     private const CHECK_CONCURRENCY = 5;
+    private const PUPPETEER_TIMEOUT_MS = 45000;
+    private const PUPPETEER_CLICK_SELECTORS = [
+        'a[href*="plan-selection"]',
+        'a[href*="booking"]',
+        'button[data-url*="plan"]',
+        'button[data-href*="plan"]',
+        'button[onclick*="plan-selection"]',
+        '[role="button"][data-url*="plan"]',
+    ];
+    private const PUPPETEER_CLICK_TEXTS = [
+        'book',
+        'get started',
+        'continue',
+        'scan',
+        'select plan',
+        'plan',
+    ];
 
     private const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
         .'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -63,6 +80,11 @@ class UrlCheckerService
      */
     private function extractAnchors(string $targetUrl): array
     {
+        $renderedHrefs = $this->extractRenderedAnchorsWithPuppeteer($targetUrl);
+        if ($renderedHrefs !== []) {
+            return $this->buildLinksMapFromHrefs($targetUrl, $renderedHrefs);
+        }
+
         $html = $this->fetchHtml($targetUrl);
 
         if ($html === null || $html === '') {
@@ -81,15 +103,110 @@ class UrlCheckerService
             return [];
         }
 
-        $originHost = parse_url($targetUrl, PHP_URL_HOST);
-        $results = [];
+        $hrefs = [];
 
         foreach ($nodes as $node) {
             $href = trim((string) $node->attributes?->getNamedItem('href')?->nodeValue);
-            if ($href === '') {
-                continue;
+            if ($href !== '') {
+                $hrefs[] = $href;
             }
+        }
 
+        return $this->buildLinksMapFromHrefs($targetUrl, $hrefs);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractRenderedAnchorsWithPuppeteer(string $targetUrl): array
+    {
+        $projectRoot = base_path();
+        $scriptPath = $projectRoot.'/scripts/url-checker-rendered-links.mjs';
+
+        if (! is_file($scriptPath)) {
+            return [];
+        }
+
+        $nodePath = trim((string) shell_exec('command -v node 2>/dev/null'));
+        if ($nodePath === '') {
+            return [];
+        }
+
+        $cmdParts = [
+            escapeshellarg($nodePath),
+            escapeshellarg($scriptPath),
+            '--url',
+            escapeshellarg($targetUrl),
+            '--timeoutMs',
+            (string) self::PUPPETEER_TIMEOUT_MS,
+            '--followExternalFlow',
+        ];
+
+        foreach (self::PUPPETEER_CLICK_SELECTORS as $selector) {
+            $cmdParts[] = '--clickSelector';
+            $cmdParts[] = escapeshellarg($selector);
+        }
+
+        foreach (self::PUPPETEER_CLICK_TEXTS as $text) {
+            $cmdParts[] = '--clickText';
+            $cmdParts[] = escapeshellarg($text);
+        }
+
+        $cmd = implode(' ', $cmdParts);
+
+        $descriptors = [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = proc_open($cmd, $descriptors, $pipes, $projectRoot);
+        if (! is_resource($process)) {
+            return [];
+        }
+
+        $stdout = is_resource($pipes[1] ?? null) ? stream_get_contents($pipes[1]) : '';
+        $stderr = is_resource($pipes[2] ?? null) ? stream_get_contents($pipes[2]) : '';
+
+        if (is_resource($pipes[1] ?? null)) {
+            fclose($pipes[1]);
+        }
+        if (is_resource($pipes[2] ?? null)) {
+            fclose($pipes[2]);
+        }
+
+        $exitCode = proc_close($process);
+        if ($exitCode !== 0 || trim($stdout) === '') {
+            report(new \RuntimeException('Puppeteer extraction failed: '.trim($stderr)));
+
+            return [];
+        }
+
+        $decoded = json_decode($stdout, true);
+        if (! is_array($decoded) || ($decoded['ok'] ?? false) !== true) {
+            return [];
+        }
+
+        $links = $decoded['links'] ?? [];
+        if (! is_array($links)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn ($value): string => is_string($value) ? trim($value) : '',
+            $links,
+        )));
+    }
+
+    /**
+     * @param  array<int, string>  $hrefs
+     * @return array<string, array{source_url:string,discovered_link:string,link_type:string}>
+     */
+    private function buildLinksMapFromHrefs(string $targetUrl, array $hrefs): array
+    {
+        $originHost = parse_url($targetUrl, PHP_URL_HOST);
+        $results = [];
+
+        foreach ($hrefs as $href) {
             if (
                 Str::startsWith($href, ['javascript:', 'mailto:', 'tel:', '#'])
                 || Str::startsWith($href, ['data:'])

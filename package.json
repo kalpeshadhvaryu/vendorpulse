@@ -8,6 +8,9 @@
         "dev:laravel": "vite",
         "dev:dashboard": "npm run dev --prefix web_dashboard"
     },
+    "dependencies": {
+        "puppeteer": "^24.10.2"
+    },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
         "concurrently": "^9.0.1",

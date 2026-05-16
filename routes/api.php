@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\EmailMailboxController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\MarketingSeoController;
 use App\Http\Controllers\Api\V1\MonitoringCheckController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrganizationManagementController;
@@ -50,6 +51,7 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 
             Route::post('vapt-web-health/url-checker', [VaptWebHealthController::class, 'urlChecker']);
+            Route::post('marketing-seo/on-page-audit', [MarketingSeoController::class, 'onPageAudit']);
         });
     });
 });
