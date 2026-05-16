@@ -7,13 +7,15 @@ echo "🚀 Starting Rapid Deployment..."
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_DIR="$ROOT_DIR/web_dashboard"
 
-# 1. Pull the fresh code without blocking on uncommitted changes
+# 1. Sync fresh code from GitHub without blocking on untracked local changes
 echo "⬇️ Syncing Repository..."
 cd "$ROOT_DIR"
-git pull origin "${BACKEND_BRANCH:-kalpesh}" --rebase
+git fetch origin "${BACKEND_BRANCH:-kalpesh}"
+git reset --hard "origin/${BACKEND_BRANCH:-kalpesh}"
 
 cd "$FRONTEND_DIR"
-git pull origin "${FRONTEND_BRANCH:-kalpesh}" --rebase
+git fetch origin "${FRONTEND_BRANCH:-kalpesh}"
+git reset --hard "origin/${FRONTEND_BRANCH:-kalpesh}"
 
 # 2. Update Backend Containers & Fix Permissions immediately
 echo "🗃️ Refreshing Backend State..."
@@ -22,22 +24,22 @@ cd "$ROOT_DIR"
 COMPOSE_CMD=(docker compose -f docker-compose.yml -f docker-compose.bind.yml)
 "${COMPOSE_CMD[@]}" up -d app horizon scheduler
 
-# Force fix storage path folders and permission limits in one shot
-"${COMPOSE_CMD[@]}" exec -T app sh -c '
-    mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
-    chmod -R 775 storage bootstrap/cache
-    chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+# Force fix storage paths using the ROOT user inside the container
+echo "🔒 Restoring folder permissions inside container..."
+"${COMPOSE_CMD[@]}" exec -T --user root app sh -c '
+    mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/cache /var/www/html/storage/framework/sessions /var/www/html/storage/framework/views /var/www/html/bootstrap/cache
+    chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 '
 
 # Fast cache refresh
 "${COMPOSE_CMD[@]}" exec -T app php artisan optimize:clear
 "${COMPOSE_CMD[@]}" exec -T app php artisan migrate --force
 
-# 3. Hot-Reload or Fast-Build Frontend
+# 3. Build Frontend
 echo "🧱 Incrementing Frontend Build..."
 cd "$FRONTEND_DIR"
 
-# Only run install if node_modules is completely missing
 if [ ! -d "node_modules" ]; then
     echo "🧰 Missing node_modules, running clean install..."
     npm install
