@@ -29,3 +29,8 @@ Schedule::call(static function (): void {
     ->everyMinute()
     ->name('site-monitoring:dispatch-due-checks')
     ->withoutOverlapping(2);
+
+Schedule::command('vapt:speedtest-alerts')
+    ->everyFifteenMinutes()
+    ->name('vapt:speedtest-alerts')
+    ->withoutOverlapping(10);

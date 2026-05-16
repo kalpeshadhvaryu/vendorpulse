@@ -72,4 +72,9 @@ class Organization extends Model
     {
         return $this->hasMany(MonitoringLog::class, 'organization_id');
     }
+
+    public function websiteSpeedtestRuns(): HasMany
+    {
+        return $this->hasMany(WebsiteSpeedtestRun::class, 'organization_id');
+    }
 }

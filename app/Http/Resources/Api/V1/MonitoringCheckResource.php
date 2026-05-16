@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Models\MonitoringCheck;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,6 +34,29 @@ class MonitoringCheckResource extends JsonResource
             'next_run_at' => $this->next_run_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+            'uptime_since' => $this->resolveUptimeSince(),
         ];
+    }
+
+    private function resolveUptimeSince(): ?string
+    {
+        if ($this->last_status !== 'ok') {
+            return null;
+        }
+
+        // Use eager-loaded aggregate when available (set by paginate via withMax).
+        $attrs = $this->resource->getAttributes();
+        if (array_key_exists('monitoring_logs_max_created_at', $attrs)) {
+            $lastBadAt = $attrs['monitoring_logs_max_created_at'];
+        } else {
+            // Fallback for show() endpoint where the aggregate is not pre-loaded.
+            $lastBadAt = $this->resource->monitoringLogs()
+                ->whereIn('status', ['failed', 'error', 'degraded'])
+                ->max('created_at');
+        }
+
+        return $lastBadAt
+            ? Carbon::parse((string) $lastBadAt)->toIso8601String()
+            : $this->created_at?->toIso8601String();
     }
 }

@@ -14,7 +14,11 @@ class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
 {
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        $query = MonitoringCheck::query();
+        $query = MonitoringCheck::query()
+            ->withMax(
+                ['monitoringLogs' => fn ($q) => $q->whereIn('status', ['failed', 'error', 'degraded'])],
+                'created_at'
+            );
 
         if (! empty($filters['search'])) {
             $term = '%'.addcslashes((string) $filters['search'], '%_\\').'%';

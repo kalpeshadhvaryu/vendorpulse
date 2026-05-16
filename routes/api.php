@@ -61,6 +61,8 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 
             Route::post('vapt-web-health/url-checker', [VaptWebHealthController::class, 'urlChecker']);
+            Route::post('vapt-web-health/website-speedtest', [VaptWebHealthController::class, 'websiteSpeedtest']);
+            Route::get('vapt-web-health/website-speedtest-runs', [VaptWebHealthController::class, 'websiteSpeedtestRuns']);
             Route::post('marketing-seo/on-page-audit', [MarketingSeoController::class, 'onPageAudit']);
             Route::get('social-accounts', [DomainSocialAccountController::class, 'index']);
             Route::post('social-accounts', [DomainSocialAccountController::class, 'store']);
