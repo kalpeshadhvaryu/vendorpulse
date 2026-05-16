@@ -5,7 +5,9 @@ namespace App\Services\Notifications;
 use App\Models\User;
 use App\Notifications\QueuedInAppNotification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Throwable;
 
 class NotificationDispatchService
 {
@@ -23,6 +25,15 @@ class NotificationDispatchService
             ? collect([$notifiables])
             : Collection::wrap($notifiables);
 
-        Notification::send($collection, new QueuedInAppNotification($eventKey, $payload));
+        try {
+            Notification::send($collection, new QueuedInAppNotification($eventKey, $payload));
+        } catch (Throwable $e) {
+            // Core business actions should not fail if notification delivery/storage fails.
+            Log::warning('Failed to dispatch in-app notification', [
+                'event_key' => $eventKey,
+                'notifiable_count' => $collection->count(),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
