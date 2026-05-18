@@ -164,3 +164,25 @@ vodeploy.sh for quick deploy
 deploy_host.sh for core deploy logic
 rollback_host.sh for fast rollback
 release.sh for auditable release history
+
+
+For Daily Healthcheck 
+cd /var/www/vendorpulse
+
+# 1) Queue + workers healthy?
+php artisan horizon:status && php artisan queue:failed
+
+# 2) Latest email automation activity (last 10 email logs with automation metadata)
+php artisan tinker --execute="dump(App\Models\EmailLog::query()->whereNotNull('processing_meta')->latest('created_at')->limit(10)->get(['id','organization_id','subject','processing_status','processing_meta','created_at'])->toArray());"
+
+# 3) Latest invoices updated recently (check auto updates and paid timestamps)
+php artisan tinker --execute="dump(App\Models\Invoice::query()->latest('updated_at')->limit(10)->get(['id','organization_id','vendor_id','number','status','currency','amount_cents','paid_at','updated_at'])->toArray());"
+
+What to look for:
+
+horizon:status should be running.
+queue:failed should be empty or stable (not growing).
+In email logs, processing_meta should include invoice_automation keys (created or updated).
+In invoices, paid updates should have status=paid with paid_at set.
+
+For Daily Healthcheck End
