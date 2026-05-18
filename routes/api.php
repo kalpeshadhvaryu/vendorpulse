@@ -52,6 +52,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('monitoring-checks/{monitoring_check}/run', [MonitoringCheckController::class, 'run']);
             Route::apiResource('monitoring-checks', MonitoringCheckController::class);
 
+            Route::post('email-mailboxes/{email_mailbox}/test-connection', [EmailMailboxController::class, 'testConnection']);
             Route::apiResource('email-mailboxes', EmailMailboxController::class);
 
             Route::get('organization/smtp-settings', [OrganizationSmtpSettingsController::class, 'show']);

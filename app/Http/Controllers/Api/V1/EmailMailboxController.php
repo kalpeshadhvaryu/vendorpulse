@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\EmailMonitoring\Contracts\MailboxConnectorFactoryInterface;
 use App\Http\Requests\Api\V1\EmailMailboxes\StoreEmailMailboxRequest;
 use App\Http\Requests\Api\V1\EmailMailboxes\UpdateEmailMailboxRequest;
 use App\Http\Resources\Api\V1\EmailMailboxResource;
@@ -13,6 +14,7 @@ use App\Support\Organization\CurrentOrganization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class EmailMailboxController extends BaseApiController
 {
@@ -52,13 +54,57 @@ class EmailMailboxController extends BaseApiController
         return ApiResponse::success(new EmailMailboxResource($mailbox), 'Mailbox updated.');
     }
 
+    public function testConnection(
+        Request $request,
+        EmailMailbox $email_mailbox,
+        MailboxConnectorFactoryInterface $connectorFactory,
+    ): JsonResponse {
+        $authError = $this->authorizeMailboxManagement($request, $email_mailbox);
+        if ($authError !== null) {
+            return $authError;
+        }
+
+        try {
+            $connector = $connectorFactory->forMailbox($email_mailbox);
+            $connector->healthCheck($email_mailbox);
+
+            $email_mailbox->update([
+                'last_error' => null,
+                'last_polled_at' => now(),
+            ]);
+
+            return ApiResponse::success([
+                'ok' => true,
+            ], 'Mailbox connection successful.');
+        } catch (Throwable $e) {
+            $email_mailbox->update([
+                'last_polled_at' => now(),
+                'last_error' => mb_substr($e->getMessage(), 0, 2000),
+            ]);
+
+            return ApiResponse::error('Mailbox connection failed: '.$e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+    }
+
     public function destroy(Request $request, EmailMailbox $email_mailbox): JsonResponse
+    {
+        $authError = $this->authorizeMailboxManagement($request, $email_mailbox);
+        if ($authError !== null) {
+            return $authError;
+        }
+
+        $this->mailboxes->delete($email_mailbox);
+
+        return ApiResponse::success(null, 'Mailbox deleted.');
+    }
+
+    private function authorizeMailboxManagement(Request $request, EmailMailbox $mailbox): ?JsonResponse
     {
         /** @var User|null $user */
         $user = $request->user();
         $organizationId = app(CurrentOrganization::class)->id();
 
-        if (! $user || ! $organizationId || (string) $email_mailbox->organization_id !== (string) $organizationId) {
+        if (! $user || ! $organizationId || (string) $mailbox->organization_id !== (string) $organizationId) {
             return ApiResponse::error('Mailbox not found.', Response::HTTP_NOT_FOUND);
         }
 
@@ -66,8 +112,6 @@ class EmailMailboxController extends BaseApiController
             return ApiResponse::error('You do not have permission to manage mailboxes for this organization.', Response::HTTP_FORBIDDEN);
         }
 
-        $this->mailboxes->delete($email_mailbox);
-
-        return ApiResponse::success(null, 'Mailbox deleted.');
+        return null;
     }
 }
