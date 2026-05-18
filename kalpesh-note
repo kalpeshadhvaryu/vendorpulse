@@ -158,3 +158,9 @@ wsl veraval password in Honest@2026 or Honest@2026VO
 this is when log error comes 
 docker exec -it vendorpulse-app-1 php artisan optimize:clear
 
+
+
+vodeploy.sh for quick deploy
+deploy_host.sh for core deploy logic
+rollback_host.sh for fast rollback
+release.sh for auditable release history
