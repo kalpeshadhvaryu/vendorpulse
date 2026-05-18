@@ -3,6 +3,7 @@
 namespace App\EmailMonitoring\Services;
 
 use App\EmailMonitoring\Pipelines\Pipes\DispatchEmailMonitoringEventsPipe;
+use App\EmailMonitoring\Pipelines\Pipes\ApplyInvoiceAutomationPipe;
 use App\EmailMonitoring\Pipelines\Pipes\ExtractInvoiceCandidatesPipe;
 use App\EmailMonitoring\Pipelines\Pipes\FinalizeEmailLogPipe;
 use App\EmailMonitoring\Pipelines\Pipes\MatchVendorEmailPipe;
@@ -11,6 +12,7 @@ use App\EmailMonitoring\Pipelines\Pipes\RegisterAttachmentsPipe;
 use App\EmailMonitoring\Pipelines\Pipes\RunOcrPlaceholderPipe;
 use App\EmailMonitoring\Pipelines\Pipes\VendorEmailPreferencesPipe;
 use App\EmailMonitoring\Enums\EmailLogProcessingStatus;
+use App\Models\EmailLog;
 use Illuminate\Pipeline\Pipeline;
 use Throwable;
 
@@ -31,6 +33,7 @@ class EmailMonitoringPipeline
                 RegisterAttachmentsPipe::class,
                 RunOcrPlaceholderPipe::class,
                 ExtractInvoiceCandidatesPipe::class,
+                ApplyInvoiceAutomationPipe::class,
                 FinalizeEmailLogPipe::class,
                 DispatchEmailMonitoringEventsPipe::class,
             ])

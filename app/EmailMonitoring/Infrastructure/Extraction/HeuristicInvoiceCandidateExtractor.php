@@ -16,16 +16,22 @@ class HeuristicInvoiceCandidateExtractor implements InvoiceCandidateExtractorInt
     {
         $text = $email->bodyText ?? strip_tags((string) ($email->bodyHtml ?? ''));
         $amount = $this->guessAmount($text);
+        $currency = $this->guessCurrency($text);
         $due = $this->guessDate($text, ['due', 'payable']);
+        $paidDate = $this->guessDate($text, ['paid', 'payment received', 'receipt']);
         $invoiceNo = $this->guessInvoiceNumber($text);
+        $event = $this->detectEvent($email->subject, $text);
 
         $payload = [
             'organization_id' => $organizationId,
             'vendor_id' => $vendor?->id,
             'external_message_id' => $email->externalMessageId,
+            'candidate_event' => $event,
             'candidate_invoice_number' => $invoiceNo,
             'candidate_amount' => $amount,
+            'candidate_currency' => $currency,
             'candidate_due_date' => $due,
+            'candidate_paid_at' => $paidDate,
             'currency_hint' => $vendor?->currency,
         ];
 
@@ -61,6 +67,27 @@ class HeuristicInvoiceCandidateExtractor implements InvoiceCandidateExtractorInt
         return null;
     }
 
+    private function guessCurrency(string $text): ?string
+    {
+        if (preg_match('/\b(USD|EUR|GBP|AED|INR|CAD|AUD|JPY|SGD)\b/i', $text, $m)) {
+            return strtoupper($m[1]);
+        }
+
+        if (str_contains($text, '$')) {
+            return 'USD';
+        }
+
+        if (str_contains($text, '€')) {
+            return 'EUR';
+        }
+
+        if (str_contains($text, '£')) {
+            return 'GBP';
+        }
+
+        return null;
+    }
+
     private function guessDate(string $text, array $keywords): ?string
     {
         $escaped = array_map(static fn (string $k): string => preg_quote($k, '/'), $keywords);
@@ -68,6 +95,14 @@ class HeuristicInvoiceCandidateExtractor implements InvoiceCandidateExtractorInt
 
         if (preg_match($pattern, $text, $m)) {
             return $m[1];
+        }
+
+        $altPattern = '/(?:'.implode('|', $escaped).')[^\d]{0,20}(\d{2}[\/\-]\d{2}[\/\-]\d{4})/i';
+
+        if (preg_match($altPattern, $text, $m)) {
+            $ts = strtotime($m[1]);
+
+            return $ts === false ? null : date('Y-m-d', $ts);
         }
 
         return null;
@@ -80,5 +115,19 @@ class HeuristicInvoiceCandidateExtractor implements InvoiceCandidateExtractorInt
         }
 
         return null;
+    }
+
+    private function detectEvent(?string $subject, string $text): string
+    {
+        $haystack = mb_strtolower(trim((string) $subject.' '.$text));
+
+        $paymentSignal = preg_match('/payment\s+(received|successful|succeeded|confirmation)|invoice\s+paid|receipt\b|paid\s+in\s+full/i', $haystack) === 1;
+        $dueSignal = preg_match('/payment\s+due|amount\s+due|past\s+due|due\s+date/i', $haystack) === 1;
+
+        if ($paymentSignal && ! $dueSignal) {
+            return 'payment_received';
+        }
+
+        return 'invoice_created';
     }
 }

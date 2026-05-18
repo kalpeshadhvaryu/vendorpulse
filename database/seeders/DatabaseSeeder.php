@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
 
         if ($user) {
             $this->syncDevUser($user);
+            $this->seedLocalDemoRecords();
 
             return;
         }
@@ -47,6 +48,7 @@ class DatabaseSeeder extends Seeder
         $this->command?->info('Seeded '.self::DEV_EMAIL.' / '.self::DEV_PASSWORD.' (Demo Organization).');
 
         $this->call(MonitoringDemoSeeder::class);
+        $this->seedLocalDemoRecords();
     }
 
     private function seedGlobalAdmin(): void
@@ -102,5 +104,14 @@ class DatabaseSeeder extends Seeder
         $this->command?->info('Dev user '.self::DEV_EMAIL.' / '.self::DEV_PASSWORD.' — password and organization links refreshed.');
 
         $this->call(MonitoringDemoSeeder::class);
+    }
+
+    private function seedLocalDemoRecords(): void
+    {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $this->call(VendorInvoiceDemoSeeder::class);
     }
 }
