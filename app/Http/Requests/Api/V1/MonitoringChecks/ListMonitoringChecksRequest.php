@@ -6,6 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ListMonitoringChecksRequest extends FormRequest
 {
+    private const TYPES = [
+        'uptime',
+        'ssl',
+        'domain',
+        'http',
+        'https',
+        'tls',
+        'whois',
+        'tcp',
+        'ping',
+        'dns',
+        'custom',
+        'server',
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -18,6 +33,7 @@ class ListMonitoringChecksRequest extends FormRequest
     {
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'type' => ['sometimes', 'nullable', 'string', \Illuminate\Validation\Rule::in(self::TYPES)],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];

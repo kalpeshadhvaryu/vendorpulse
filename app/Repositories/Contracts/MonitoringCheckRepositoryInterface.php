@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 interface MonitoringCheckRepositoryInterface
 {
     /**
-     * @param  array{search?: string}  $filters
+        * @param  array{search?: string, type?: string}  $filters
      */
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator;
 

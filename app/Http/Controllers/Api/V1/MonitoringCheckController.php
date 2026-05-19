@@ -33,6 +33,9 @@ class MonitoringCheckController extends BaseApiController
         if (! empty($validated['search'])) {
             $filters['search'] = trim((string) $validated['search']);
         }
+        if (! empty($validated['type'])) {
+            $filters['type'] = (string) $validated['type'];
+        }
 
         return ApiResponse::fromResource(
             MonitoringCheckResource::collection($this->monitoringChecks->paginate($perPage, $filters))

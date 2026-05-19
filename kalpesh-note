@@ -186,3 +186,7 @@ In email logs, processing_meta should include invoice_automation keys (created o
 In invoices, paid updates should have status=paid with paid_at set.
 
 For Daily Healthcheck End
+
+
+Day-to-day deploy: .release.sh deploy
+If it says repo dirty and you know those server edits are not needed: FORCE_RESET=1 release.sh deploy

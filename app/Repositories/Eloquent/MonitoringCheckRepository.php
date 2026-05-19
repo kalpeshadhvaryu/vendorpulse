@@ -31,6 +31,10 @@ class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
             });
         }
 
+        if (! empty($filters['type'])) {
+            $query->where('type', (string) $filters['type']);
+        }
+
         return $query->orderByDesc('created_at')->paginate($perPage);
     }
 
