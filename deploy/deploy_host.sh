@@ -132,8 +132,30 @@ php artisan optimize
 if [[ "$START_HOST_WORKERS" == "1" ]]; then
     if pgrep -f "artisan horizon" >/dev/null 2>&1; then
         php artisan horizon:terminate || true
-    else
+    fi
+
+    # Ensure Horizon is running after terminate/redeploy.
+    if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
         nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+    fi
+
+    horizon_ok=0
+    for _ in {1..10}; do
+        if php artisan horizon:status 2>/dev/null | grep -Eiq "running|active"; then
+            horizon_ok=1
+            break
+        fi
+
+        if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
+            nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+        fi
+
+        sleep 1
+    done
+
+    if [[ "$horizon_ok" != "1" ]]; then
+        echo "❌ Horizon did not become active after restart"
+        exit 1
     fi
 
     if ! pgrep -f "artisan schedule:work" >/dev/null 2>&1; then
