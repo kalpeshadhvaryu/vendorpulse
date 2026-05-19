@@ -14,8 +14,11 @@ case "$ACTION" in
     rollback)
         TARGET_SCRIPT="$ROOT_DIR/deploy/rollback_host.sh"
         ;;
+    workers)
+        TARGET_SCRIPT="$ROOT_DIR/deploy/workers_up.sh"
+        ;;
     *)
-        echo "Usage: $0 [deploy|rollback] [script-args...]"
+        echo "Usage: $0 [deploy|rollback|workers] [script-args...]"
         exit 1
         ;;
 esac

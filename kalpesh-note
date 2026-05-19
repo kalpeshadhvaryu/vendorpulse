@@ -190,3 +190,6 @@ For Daily Healthcheck End
 
 Day-to-day deploy: .release.sh deploy
 If it says repo dirty and you know those server edits are not needed: FORCE_RESET=1 release.sh deploy
+
+To Start the Horizon
+cd /var/www/vendorpulse && nohup php artisan horizon > storage/logs/horizon-host.log 2>&1 &
