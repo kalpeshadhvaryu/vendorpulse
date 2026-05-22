@@ -538,8 +538,10 @@ class ExperienceMonitoringService
 
     private function resolveDnsDiagnostics(string $host): array
     {
+        $fqdn = rtrim($host, '.').'.';
+
         $started = microtime(true);
-        $records = @dns_get_record($host, DNS_A + DNS_AAAA);
+        $records = @dns_get_record($fqdn, DNS_A + DNS_AAAA);
         $latencyMs = round((microtime(true) - $started) * 1000, 2);
 
         $aRecords = [];
