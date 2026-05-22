@@ -1,6 +1,7 @@
 <?php
 
 use App\EmailMonitoring\Jobs\DispatchPollEmailMailboxesJob;
+use App\ExperienceMonitoring\Jobs\DispatchDueExperienceMonitoringTestsJob;
 use App\SiteMonitoring\Jobs\DispatchDueMonitoringChecksJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -28,6 +29,13 @@ Schedule::call(static function (): void {
 })
     ->everyMinute()
     ->name('site-monitoring:dispatch-due-checks')
+    ->withoutOverlapping(2);
+
+Schedule::call(static function (): void {
+    DispatchDueExperienceMonitoringTestsJob::dispatch();
+})
+    ->everyMinute()
+    ->name('experience-monitoring:dispatch-due-tests')
     ->withoutOverlapping(2);
 
 Schedule::command('vapt:speedtest-alerts')

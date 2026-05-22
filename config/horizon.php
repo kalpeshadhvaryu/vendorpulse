@@ -100,6 +100,7 @@ return [
         'redis:default' => 60,
         'redis:email-monitoring' => 120,
         'redis:site-monitoring' => 120,
+        'redis:experience-monitoring' => 120,
     ],
 
     /*
@@ -201,7 +202,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'notifications', 'email-monitoring', 'site-monitoring'],
+            'queue' => ['default', 'notifications', 'email-monitoring', 'site-monitoring', 'experience-monitoring'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,

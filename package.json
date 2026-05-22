@@ -9,6 +9,7 @@
         "dev:dashboard": "npm run dev --prefix web_dashboard"
     },
     "dependencies": {
+        "playwright": "^1.54.2",
         "puppeteer": "^24.10.2"
     },
     "devDependencies": {

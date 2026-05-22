@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Repositories\Contracts\InvoiceRepositoryInterface;
+use App\Repositories\Contracts\ExperienceMonitoringRepositoryInterface;
 use App\Repositories\Contracts\MonitoringCheckRepositoryInterface;
 use App\Repositories\Contracts\VendorEmailRepositoryInterface;
 use App\Repositories\Contracts\VendorRepositoryInterface;
 use App\Repositories\Eloquent\InvoiceRepository;
+use App\Repositories\Eloquent\ExperienceMonitoringRepository;
 use App\Repositories\Eloquent\MonitoringCheckRepository;
 use App\Repositories\Eloquent\VendorEmailRepository;
 use App\Repositories\Eloquent\VendorRepository;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(VendorEmailRepositoryInterface::class, VendorEmailRepository::class);
         $this->app->bind(InvoiceRepositoryInterface::class, InvoiceRepository::class);
         $this->app->bind(MonitoringCheckRepositoryInterface::class, MonitoringCheckRepository::class);
+        $this->app->bind(ExperienceMonitoringRepositoryInterface::class, ExperienceMonitoringRepository::class);
     }
 
     public function boot(): void

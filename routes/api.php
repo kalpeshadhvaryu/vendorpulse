@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\DomainSocialAccountController;
 use App\Http\Controllers\Api\V1\EmailMailboxController;
+use App\Http\Controllers\Api\V1\ExperienceMonitoringController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MarketingSeoController;
 use App\Http\Controllers\Api\V1\MonitoringCheckController;
@@ -51,6 +52,14 @@ Route::prefix('v1')->group(function (): void {
             Route::get('monitoring-checks/{monitoring_check}/server-analytics', [MonitoringCheckController::class, 'serverAnalytics']);
             Route::post('monitoring-checks/{monitoring_check}/run', [MonitoringCheckController::class, 'run']);
             Route::apiResource('monitoring-checks', MonitoringCheckController::class);
+
+            Route::get('experience-monitoring-tests/{experience_monitoring_test}/runs', [ExperienceMonitoringController::class, 'runs']);
+            Route::get('experience-monitoring-tests/{experience_monitoring_test}/metrics', [ExperienceMonitoringController::class, 'metrics']);
+            Route::get('experience-monitoring-tests/{experience_monitoring_test}/report', [ExperienceMonitoringController::class, 'report']);
+            Route::get('experience-monitoring-tests/{experience_monitoring_test}/screenshots', [ExperienceMonitoringController::class, 'screenshots']);
+            Route::post('experience-monitoring-tests/{experience_monitoring_test}/trigger', [ExperienceMonitoringController::class, 'trigger']);
+            Route::get('experience-monitoring-screenshots/{experience_monitoring_screenshot}/file', [ExperienceMonitoringController::class, 'screenshotFile']);
+            Route::apiResource('experience-monitoring-tests', ExperienceMonitoringController::class);
 
             Route::post('email-mailboxes/{email_mailbox}/test-connection', [EmailMailboxController::class, 'testConnection']);
             Route::apiResource('email-mailboxes', EmailMailboxController::class);
