@@ -91,11 +91,22 @@ class VendorPulseApi {
   Future<List<MonitoringCheck>> fetchMonitoringChecks({
     required String token,
     required String organizationId,
-    int perPage = 25,
+    int perPage = 100,
+    String? search,
+    String? type,
   }) async {
+    final query = <String, String>{
+      'per_page': '$perPage',
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (type != null && type.isNotEmpty) 'type': type,
+    };
+    final queryString = query.entries
+        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+
     final response = await _rawRequest(
       method: 'GET',
-      path: '/monitoring-checks?per_page=$perPage',
+      path: '/monitoring-checks?$queryString',
       token: token,
       organizationId: organizationId,
     );
@@ -111,6 +122,82 @@ class VendorPulseApi {
         .whereType<Map<String, dynamic>>()
         .map(MonitoringCheck.fromJson)
         .toList();
+  }
+
+  Future<PaginatedMonitoringLogs> fetchMonitoringLogs({
+    required String token,
+    required String organizationId,
+    required String checkId,
+    int page = 1,
+    int perPage = 30,
+    String? fromAt,
+    String? toAt,
+    String? status,
+    String? search,
+    bool downtimeOnly = false,
+  }) async {
+    final query = <String, String>{
+      'page': '$page',
+      'per_page': '$perPage',
+      if (fromAt != null && fromAt.isNotEmpty) 'from_at': fromAt,
+      if (toAt != null && toAt.isNotEmpty) 'to_at': toAt,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (downtimeOnly) 'downtime_only': '1',
+    };
+    final queryString = query.entries
+        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+
+    final response = await _rawRequest(
+      method: 'GET',
+      path: '/monitoring-checks/$checkId/logs?$queryString',
+      token: token,
+      organizationId: organizationId,
+    );
+
+    final body = _decodeJson(response.body);
+    final success = body['success'] == true;
+    if (!success) {
+      throw ApiException((body['message'] ?? 'Request failed.').toString());
+    }
+
+    final items = body['data'] as List<dynamic>? ?? const [];
+    final meta = body['meta'] as Map<String, dynamic>? ?? const {};
+
+    return PaginatedMonitoringLogs(
+      items: items
+          .whereType<Map<String, dynamic>>()
+          .map(MonitoringLog.fromJson)
+          .toList(),
+      currentPage: (meta['current_page'] as num? ?? page).toInt(),
+      lastPage: (meta['last_page'] as num? ?? 1).toInt(),
+    );
+  }
+
+  Future<MonitoringLogSummary> fetchMonitoringLogSummary({
+    required String token,
+    required String organizationId,
+    required String checkId,
+    String? fromAt,
+    String? toAt,
+  }) async {
+    final query = <String, String>{
+      if (fromAt != null && fromAt.isNotEmpty) 'from_at': fromAt,
+      if (toAt != null && toAt.isNotEmpty) 'to_at': toAt,
+    };
+    final queryString = query.entries
+        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+
+    final data = await _request(
+      method: 'GET',
+      path: '/monitoring-checks/$checkId/log-summary${queryString.isEmpty ? '' : '?$queryString'}',
+      token: token,
+      organizationId: organizationId,
+    );
+
+    return MonitoringLogSummary.fromJson(data);
   }
 
   Future<void> runMonitoringCheck({
@@ -171,15 +258,25 @@ class VendorPulseApi {
       headers['X-Organization-Id'] = organizationId;
     }
 
-    final response = switch (method) {
-      'GET' => await _http
-          .get(url, headers: headers)
-          .timeout(AppConfig.requestTimeout),
-      'POST' => await _http
-          .post(url, headers: headers, body: jsonEncode(body ?? const {}))
-          .timeout(AppConfig.requestTimeout),
-      _ => throw ApiException('Unsupported HTTP method: $method'),
-    };
+    late final http.Response response;
+    try {
+      response = switch (method) {
+        'GET' => await _http
+            .get(url, headers: headers)
+            .timeout(AppConfig.requestTimeout),
+        'POST' => await _http
+            .post(url, headers: headers, body: jsonEncode(body ?? const {}))
+            .timeout(AppConfig.requestTimeout),
+        _ => throw ApiException('Unsupported HTTP method: $method'),
+      };
+    } on Exception catch (error) {
+      throw ApiException(
+        'Cannot reach the API at ${AppConfig.apiBaseUrl}. '
+        'Start the Laravel API (Docker or php artisan serve). '
+        'If you use Flutter web, add this app origin to CORS_ALLOWED_ORIGINS. '
+        '(${error.runtimeType})',
+      );
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;

@@ -10,6 +10,41 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiResponse
 {
+    /**
+     * Ensure JsonResource payloads serialize as plain arrays for the SPA.
+     *
+     * @param  mixed  $data
+     * @return mixed
+     */
+    private static function normalizeData(mixed $data): mixed
+    {
+        if ($data instanceof JsonResource) {
+            return $data->resolve(request());
+        }
+
+        if ($data instanceof ResourceCollection) {
+            return $data->resolve(request());
+        }
+
+        if (! is_array($data)) {
+            return $data;
+        }
+
+        $normalized = [];
+
+        foreach ($data as $key => $value) {
+            if ($value instanceof JsonResource) {
+                $normalized[$key] = $value->resolve(request());
+            } elseif ($value instanceof ResourceCollection) {
+                $normalized[$key] = $value->resolve(request());
+            } else {
+                $normalized[$key] = $value;
+            }
+        }
+
+        return $normalized;
+    }
+
     public static function fromResource(
         JsonResource|ResourceCollection $resource,
         string $message = 'OK',
@@ -36,7 +71,7 @@ class ApiResponse
         $payload = [
             'success' => true,
             'message' => $message,
-            'data' => $data,
+            'data' => self::normalizeData($data),
         ];
 
         if ($data instanceof LengthAwarePaginator) {

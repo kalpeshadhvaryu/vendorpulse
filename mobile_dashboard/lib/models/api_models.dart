@@ -127,6 +127,7 @@ class MonitoringCheck {
   final int? lastResponseTimeMs;
   final int consecutiveFailures;
   final bool enabled;
+  final String? uptimeSince;
 
   const MonitoringCheck({
     required this.id,
@@ -137,6 +138,7 @@ class MonitoringCheck {
     required this.lastResponseTimeMs,
     required this.consecutiveFailures,
     required this.enabled,
+    required this.uptimeSince,
   });
 
   factory MonitoringCheck.fromJson(Map<String, dynamic> json) {
@@ -149,6 +151,7 @@ class MonitoringCheck {
       lastResponseTimeMs: (json['last_response_time_ms'] as num?)?.toInt(),
       consecutiveFailures: (json['consecutive_failures'] as num? ?? 0).toInt(),
       enabled: json['enabled'] == true,
+      uptimeSince: json['uptime_since']?.toString(),
     );
   }
 
@@ -161,6 +164,7 @@ class MonitoringCheck {
     int? lastResponseTimeMs,
     int? consecutiveFailures,
     bool? enabled,
+    String? uptimeSince,
   }) {
     return MonitoringCheck(
       id: id ?? this.id,
@@ -171,8 +175,101 @@ class MonitoringCheck {
       lastResponseTimeMs: lastResponseTimeMs ?? this.lastResponseTimeMs,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,
       enabled: enabled ?? this.enabled,
+      uptimeSince: uptimeSince ?? this.uptimeSince,
     );
   }
+}
+
+class MonitoringLog {
+  final String id;
+  final String status;
+  final int? httpStatus;
+  final int? responseTimeMs;
+  final String? message;
+  final String? createdAt;
+
+  const MonitoringLog({
+    required this.id,
+    required this.status,
+    required this.httpStatus,
+    required this.responseTimeMs,
+    required this.message,
+    required this.createdAt,
+  });
+
+  factory MonitoringLog.fromJson(Map<String, dynamic> json) {
+    return MonitoringLog(
+      id: (json['id'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      httpStatus: (json['http_status'] as num?)?.toInt(),
+      responseTimeMs: (json['response_time_ms'] as num?)?.toInt(),
+      message: json['message']?.toString(),
+      createdAt: json['created_at']?.toString(),
+    );
+  }
+}
+
+class MonitoringLogSummary {
+  final int logCountInWindow;
+  final double? uptimeRatio;
+  final int downtimeIncidents;
+  final DurationBreakdown durationSeconds;
+
+  const MonitoringLogSummary({
+    required this.logCountInWindow,
+    required this.uptimeRatio,
+    required this.downtimeIncidents,
+    required this.durationSeconds,
+  });
+
+  factory MonitoringLogSummary.fromJson(Map<String, dynamic> json) {
+    final durations = json['duration_seconds'] as Map<String, dynamic>? ?? const {};
+
+    return MonitoringLogSummary(
+      logCountInWindow: (json['log_count_in_window'] as num? ?? 0).toInt(),
+      uptimeRatio: (json['uptime_ratio'] as num?)?.toDouble(),
+      downtimeIncidents: (json['downtime_incidents'] as num? ?? 0).toInt(),
+      durationSeconds: DurationBreakdown.fromJson(durations),
+    );
+  }
+}
+
+class DurationBreakdown {
+  final int up;
+  final int down;
+  final int degraded;
+  final int skipped;
+  final int unknown;
+
+  const DurationBreakdown({
+    required this.up,
+    required this.down,
+    required this.degraded,
+    required this.skipped,
+    required this.unknown,
+  });
+
+  factory DurationBreakdown.fromJson(Map<String, dynamic> json) {
+    return DurationBreakdown(
+      up: (json['up'] as num? ?? 0).toInt(),
+      down: (json['down'] as num? ?? 0).toInt(),
+      degraded: (json['degraded'] as num? ?? 0).toInt(),
+      skipped: (json['skipped'] as num? ?? 0).toInt(),
+      unknown: (json['unknown'] as num? ?? 0).toInt(),
+    );
+  }
+}
+
+class PaginatedMonitoringLogs {
+  final List<MonitoringLog> items;
+  final int currentPage;
+  final int lastPage;
+
+  const PaginatedMonitoringLogs({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+  });
 }
 
 class MonitoringFallbackPoint {

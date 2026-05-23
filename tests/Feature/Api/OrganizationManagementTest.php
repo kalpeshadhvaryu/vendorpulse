@@ -324,4 +324,128 @@ class OrganizationManagementTest extends TestCase
             'id' => $targetOrg->id,
         ]);
     }
+
+    public function test_admin_can_show_organization_with_members(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $org = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($org->id, ['role' => 'member']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson("/api/v1/organizations/{$org->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.organization.id', $org->id)
+            ->assertJsonPath('data.organization.name', $org->name)
+            ->assertJsonCount(1, 'data.members')
+            ->assertJsonFragment(['email' => $member->email]);
+    }
+
+    public function test_admin_can_show_soft_deleted_organization(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $org = Organization::factory()->create();
+        $org->delete();
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson("/api/v1/organizations/{$org->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('data.organization.id', $org->id);
+
+        $this->assertNotNull($response->json('data.organization.deleted_at'));
+    }
+
+    public function test_admin_can_restore_soft_deleted_organization(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $org = Organization::factory()->create();
+        $org->delete();
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson("/api/v1/organizations/{$org->id}/restore");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('organizations', [
+            'id' => $org->id,
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_admin_can_update_and_detach_organization_member(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $org = Organization::factory()->create();
+        $member = User::factory()->create(['default_organization_id' => $org->id]);
+        $member->organizations()->attach($org->id, ['role' => 'member']);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/v1/organizations/{$org->id}/members/{$member->id}", [
+            'role' => 'admin',
+        ])->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->deleteJson("/api/v1/organizations/{$org->id}/members/{$member->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('organization_user', [
+            'organization_id' => $org->id,
+            'user_id' => $member->id,
+        ]);
+
+        $member->refresh();
+        $this->assertNull($member->default_organization_id);
+    }
+
+    public function test_admin_can_show_user_with_flat_json_payload(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $target = User::factory()->create(['email' => 'show-me@example.test']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson("/api/v1/organizations/users/{$target->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.id', $target->id)
+            ->assertJsonPath('data.email', 'show-me@example.test')
+            ->assertJsonMissingPath('data.data');
+    }
+
+    public function test_admin_can_update_deactivate_and_restore_user(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $target = User::factory()->create(['name' => 'Before Update']);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/v1/organizations/users/{$target->id}", [
+            'name' => 'After Update',
+            'timezone' => 'UTC',
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'After Update');
+
+        $this->deleteJson("/api/v1/organizations/users/{$target->id}")
+            ->assertOk();
+
+        $this->assertSoftDeleted('users', ['id' => $target->id]);
+
+        $this->postJson("/api/v1/organizations/users/{$target->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('data.name', 'After Update');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'deleted_at' => null,
+        ]);
+    }
 }

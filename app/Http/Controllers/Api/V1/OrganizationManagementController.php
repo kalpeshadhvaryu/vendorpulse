@@ -29,10 +29,15 @@ class OrganizationManagementController extends BaseApiController
     {
         Gate::authorize('viewUsers', Organization::class);
 
-        $users = User::query()
+        $query = User::query()
             ->with(['organizations', 'defaultOrganization'])
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+
+        if (filter_var($request->query('include_trashed'), FILTER_VALIDATE_BOOLEAN)) {
+            $query->withTrashed();
+        }
+
+        $users = $query->get();
 
         return ApiResponse::success(UserResource::collection($users));
     }
@@ -275,6 +280,221 @@ class OrganizationManagementController extends BaseApiController
                 ? 'Global access granted.'
                 : 'Global access revoked.'
         );
+    }
+
+    public function show(Request $request, string $organization): JsonResponse
+    {
+        $model = Organization::query()->withTrashed()->find($organization);
+
+        if (! $model) {
+            return ApiResponse::error('Organization not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        Gate::authorize('view', $model);
+
+        $model->load([
+            'users' => fn ($query) => $query->orderBy('name'),
+        ]);
+
+        return ApiResponse::success([
+            'organization' => (new OrganizationResource($model))->resolve($request),
+            'members' => UserResource::collection($model->users)->resolve($request),
+        ]);
+    }
+
+    public function restore(Request $request, string $organization): JsonResponse
+    {
+        $model = Organization::query()->withTrashed()->find($organization);
+
+        if (! $model) {
+            return ApiResponse::error('Organization not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        Gate::authorize('restore', $model);
+
+        if (! $model->trashed()) {
+            return ApiResponse::error('Organization is not deleted.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $model->restore();
+
+        return ApiResponse::success(
+            new OrganizationResource($model->fresh()),
+            'Organization restored.'
+        );
+    }
+
+    public function updateMember(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        Gate::authorize('updateMember', $organization);
+
+        if (! $user->belongsToOrganization((string) $organization->id)) {
+            return ApiResponse::error('User is not a member of this organization.', Response::HTTP_NOT_FOUND);
+        }
+
+        $validated = $request->validate([
+            'role' => ['required', 'string', 'in:member,owner,admin'],
+            'set_default' => ['sometimes', 'boolean'],
+        ]);
+
+        $role = (string) $validated['role'];
+        $setDefault = (bool) ($validated['set_default'] ?? false);
+
+        $organization->users()->updateExistingPivot($user->id, [
+            'role' => $role,
+        ]);
+
+        if ($setDefault) {
+            $user->forceFill(['default_organization_id' => $organization->id])->save();
+        }
+
+        $member = $organization->users()
+            ->where('users.id', $user->id)
+            ->first();
+
+        $member?->load(['organizations', 'defaultOrganization']);
+
+        return ApiResponse::success(
+            new UserResource($member ?? $user),
+            'Member role updated.'
+        );
+    }
+
+    public function detachMember(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        Gate::authorize('detachMember', $organization);
+
+        if (! $user->belongsToOrganization((string) $organization->id)) {
+            return ApiResponse::error('User is not a member of this organization.', Response::HTTP_NOT_FOUND);
+        }
+
+        /** @var User $actor */
+        $actor = $request->user();
+
+        if ($actor->id === $user->id) {
+            return ApiResponse::error('You cannot remove yourself from an organization.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        DB::transaction(function () use ($organization, $user): void {
+            $organization->users()->detach($user->id);
+
+            if ($user->default_organization_id === $organization->id) {
+                $fallbackOrgId = $user->organizations()
+                    ->orderBy('organizations.name')
+                    ->value('organizations.id');
+
+                $user->forceFill([
+                    'default_organization_id' => $fallbackOrgId,
+                ])->save();
+            }
+        });
+
+        return ApiResponse::success(null, 'User removed from organization.');
+    }
+
+    public function showUser(Request $request, string $user): JsonResponse
+    {
+        $model = User::query()->withTrashed()->find($user);
+
+        if (! $model) {
+            return ApiResponse::error('User not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        Gate::authorize('viewUser', $model);
+
+        $model->load(['organizations', 'defaultOrganization']);
+
+        return ApiResponse::success(new UserResource($model));
+    }
+
+    public function updateUser(Request $request, User $user): JsonResponse
+    {
+        Gate::authorize('updateUser', $user);
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'timezone' => ['nullable', 'string', 'max:64'],
+            'password' => ['sometimes', 'string', 'min:8'],
+            'default_organization_id' => ['nullable', 'uuid', 'exists:organizations,id'],
+        ]);
+
+        if (array_key_exists('email', $validated)) {
+            $validated['email'] = mb_strtolower(trim((string) $validated['email']));
+        }
+
+        if (array_key_exists('default_organization_id', $validated) && $validated['default_organization_id'] !== null) {
+            if (! $user->belongsToOrganization((string) $validated['default_organization_id'])) {
+                return ApiResponse::error(
+                    'Default organization must be one the user belongs to.',
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+        }
+
+        $attributes = [
+            'name' => $validated['name'] ?? $user->name,
+            'email' => $validated['email'] ?? $user->email,
+            'timezone' => array_key_exists('timezone', $validated) ? $validated['timezone'] : $user->timezone,
+            'default_organization_id' => array_key_exists('default_organization_id', $validated)
+                ? $validated['default_organization_id']
+                : $user->default_organization_id,
+            'updated_by' => $request->user()?->id,
+        ];
+
+        if (array_key_exists('password', $validated)) {
+            $attributes['password'] = $validated['password'];
+        }
+
+        $user->forceFill($attributes)->save();
+
+        $user->load(['organizations', 'defaultOrganization']);
+
+        return ApiResponse::success(new UserResource($user), 'User updated.');
+    }
+
+    public function destroyUser(Request $request, User $user): JsonResponse
+    {
+        Gate::authorize('deleteUser', $user);
+
+        /** @var User $actor */
+        $actor = $request->user();
+
+        if ($actor->id === $user->id) {
+            return ApiResponse::error('You cannot deactivate your own account.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($user->trashed()) {
+            return ApiResponse::error('User is already deactivated.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        DB::transaction(function () use ($user): void {
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
+        return ApiResponse::success(null, 'User deactivated.');
+    }
+
+    public function restoreUser(Request $request, string $user): JsonResponse
+    {
+        $model = User::query()->withTrashed()->find($user);
+
+        if (! $model) {
+            return ApiResponse::error('User not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        Gate::authorize('restoreUser', $model);
+
+        if (! $model->trashed()) {
+            return ApiResponse::error('User is not deactivated.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $model->restore();
+
+        $model->load(['organizations', 'defaultOrganization']);
+
+        return ApiResponse::success(new UserResource($model), 'User restored.');
     }
 
     public function destroy(Request $request, Organization $organization): JsonResponse

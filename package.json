@@ -6,8 +6,9 @@
         "build": "vite build",
         "dev": "vite",
         "dev:laravel": "vite",
-        "dev:api": "php artisan serve --host=127.0.0.1 --port=8000",
-        "dev:dashboard": "npm run dev:3000 --prefix web_dashboard",
+        "dev:api": "sh -c 'if docker ps --format \"{{.Names}}\" 2>/dev/null | grep -q vendorpulse-app; then echo \"API already on :8000 (Docker vendorpulse-app-1). Rebuild: docker compose up -d --build app\"; exit 0; fi; fuser -k 8000/tcp 2>/dev/null || true; php artisan route:clear && php artisan config:clear && exec php artisan serve --host=127.0.0.1 --port=8000'",
+        "dev:api:docker": "docker compose up -d --build app && docker compose exec app php artisan route:clear && docker compose exec app php artisan config:clear",
+        "dev:dashboard": "npm run dev:restart --prefix web_dashboard",
         "build:mobile:web": "cd mobile_dashboard && flutter build web --debug --base-href /mobile_dashboard/ --dart-define=VP_API_BASE_URL=http://127.0.0.1:8000/api/v1",
         "dev:mobile:web": "npm run build:mobile:web && cd mobile_dashboard && php -S 127.0.0.1:7357 -t build/web",
         "dev:frontdoor": "concurrently -n next,flutter -c blue,magenta \"npm run dev:dashboard\" \"npm run dev:mobile:web\""

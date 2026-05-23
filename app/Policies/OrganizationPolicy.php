@@ -37,6 +37,26 @@ class OrganizationPolicy
         return $user->isAdmin();
     }
 
+    public function view(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function restore(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function updateMember(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function detachMember(User $user, Organization $organization): bool
+    {
+        return $user->isAdmin();
+    }
+
     public function manageSmtp(User $user, Organization $organization): bool
     {
         return $user->isAdmin()

@@ -21,9 +21,11 @@ class UserResource extends JsonResource
             'timezone' => $this->timezone,
             'is_admin' => $this->isAdmin(),
             'default_organization_id' => $this->default_organization_id,
+            'membership_role' => $this->whenPivotLoaded('organization_user', fn () => $this->pivot?->role),
             'organizations' => OrganizationResource::collection($this->whenLoaded('organizations')),
             'default_organization' => new OrganizationResource($this->whenLoaded('defaultOrganization')),
             'created_at' => $this->created_at?->toIso8601String(),
+            'deleted_at' => $this->deleted_at?->toIso8601String(),
         ];
     }
 }

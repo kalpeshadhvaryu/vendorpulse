@@ -1,0 +1,18 @@
+One-shot cheat sheet (copy/paste)
+# Terminal 1 — backend
+cd ~/projects/vendorpulse && docker compose up -d --build
+# Terminal 2 — web + mobile web
+cd ~/projects/vendorpulse && npm run dev:frontdoor
+# Terminal 3 (optional) — Flutter native
+cd ~/projects/vendorpulse/mobile_dashboard && flutter run --dart-define=VP_API_BASE_URL=http://127.0.0.1:8000/api/v1
+
+
+
+
+
+Notes
+Do not run npm run dev:api while Docker vendorpulse-app is on port 8000 — the API is already there.
+Ensure web_dashboard/.env.local has:
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+Stop everything: docker compose down and Ctrl+C in the frontend terminals.
+If you want live PHP edits inside Docker without rebuilds, use the bind overlay from docker-compose.yml:

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../models/api_models.dart';
+import '../monitoring/monitoring_check_detail_page.dart';
 import '../../services/session_store.dart';
 import '../../services/vendorpulse_api.dart';
 
@@ -25,6 +26,9 @@ class _DashboardPageState extends State<DashboardPage> {
   DashboardTrends? _trends;
   MonitoringFallbackTrends? _fallbackTrends;
   List<MonitoringCheck> _monitoringChecks = <MonitoringCheck>[];
+  final TextEditingController _monitoringSearchController =
+      TextEditingController();
+  String? _monitoringTypeFilter;
   final Set<String> _pendingRunCheckIds = <String>{};
   String? _error;
   bool _isLoading = false;
@@ -41,7 +45,35 @@ class _DashboardPageState extends State<DashboardPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _monitoringSearchController.dispose();
     super.dispose();
+  }
+
+  static const List<String> _monitoringTypeOptions = <String>[
+    'uptime',
+    'ssl',
+    'domain',
+    'http',
+    'https',
+    'tls',
+    'whois',
+    'tcp',
+    'ping',
+    'dns',
+    'custom',
+    'server',
+  ];
+
+  bool get _hasMonitoringFilters =>
+      _monitoringSearchController.text.trim().isNotEmpty ||
+      _monitoringTypeFilter != null;
+
+  void _clearMonitoringFilters() {
+    _monitoringSearchController.clear();
+    setState(() {
+      _monitoringTypeFilter = null;
+    });
+    _refreshDashboard();
   }
 
   Future<void> _bootstrapSession() async {
@@ -111,6 +143,13 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() {
         _error = error.message;
       });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = 'Login failed. ${error.toString()}';
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -164,6 +203,10 @@ class _DashboardPageState extends State<DashboardPage> {
       final checks = await _api.fetchMonitoringChecks(
         token: token,
         organizationId: orgId,
+        search: _monitoringSearchController.text.trim().isEmpty
+            ? null
+            : _monitoringSearchController.text,
+        type: _monitoringTypeFilter,
       );
 
       if (!mounted) {
@@ -189,6 +232,27 @@ class _DashboardPageState extends State<DashboardPage> {
         });
       }
     }
+  }
+
+  void _openMonitoringCheck(MonitoringCheck check) {
+    final token = _token;
+    final orgId = _organizationId;
+
+    if (token == null || orgId == null) {
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => MonitoringCheckDetailPage(
+          check: check,
+          token: token,
+          organizationId: orgId,
+          api: _api,
+          onRunNow: _runNow,
+        ),
+      ),
+    );
   }
 
   Future<void> _runNow(String checkId) async {
@@ -430,11 +494,23 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           _MonitoringTab(
             checks: _monitoringChecks,
+            hasActiveFilters: _hasMonitoringFilters,
+            searchController: _monitoringSearchController,
+            selectedType: _monitoringTypeFilter,
+            typeOptions: _monitoringTypeOptions,
             pendingRunCheckIds: _pendingRunCheckIds,
             isLoading: _isLoading,
             error: _error,
             onRefresh: _refreshDashboard,
             onRunNow: _runNow,
+            onOpenCheck: _openMonitoringCheck,
+            onSearchChanged: () => setState(() {}),
+            onSearchSubmitted: _refreshDashboard,
+            onTypeChanged: (value) {
+              setState(() => _monitoringTypeFilter = value);
+              _refreshDashboard();
+            },
+            onClearFilters: _clearMonitoringFilters,
           ),
           _ProfileTab(
             user: _user,
@@ -659,19 +735,37 @@ class _OverviewTab extends StatelessWidget {
 
 class _MonitoringTab extends StatelessWidget {
   final List<MonitoringCheck> checks;
+  final bool hasActiveFilters;
+  final TextEditingController searchController;
+  final String? selectedType;
+  final List<String> typeOptions;
   final Set<String> pendingRunCheckIds;
   final bool isLoading;
   final String? error;
   final Future<void> Function() onRefresh;
   final Future<void> Function(String checkId) onRunNow;
+  final VoidCallback onSearchChanged;
+  final Future<void> Function() onSearchSubmitted;
+  final void Function(String? value) onTypeChanged;
+  final VoidCallback onClearFilters;
+  final void Function(MonitoringCheck check) onOpenCheck;
 
   const _MonitoringTab({
     required this.checks,
+    required this.hasActiveFilters,
+    required this.searchController,
+    required this.selectedType,
+    required this.typeOptions,
     required this.pendingRunCheckIds,
     required this.isLoading,
     required this.error,
     required this.onRefresh,
     required this.onRunNow,
+    required this.onSearchChanged,
+    required this.onSearchSubmitted,
+    required this.onTypeChanged,
+    required this.onClearFilters,
+    required this.onOpenCheck,
   });
 
   @override
@@ -683,21 +777,102 @@ class _MonitoringTab extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
           const _SectionTitle(
-            title: 'Monitoring analytics',
-            subtitle: 'Status distribution and quick run controls.',
+            title: 'Monitoring',
+            subtitle: 'Search and filter checks like the web dashboard.',
             icon: Icons.radar_outlined,
           ),
           const SizedBox(height: 14),
+          _Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (_) => onSearchChanged(),
+                  onSubmitted: (_) => onSearchSubmitted(),
+                  decoration: InputDecoration(
+                    labelText: 'Search',
+                    hintText: 'Checks, endpoint, status…',
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    suffixIcon: searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              searchController.clear();
+                              onSearchChanged();
+                              onSearchSubmitted();
+                            },
+                            icon: const Icon(Icons.close, size: 18),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _TypeTabChip(
+                        label: 'All',
+                        selected: selectedType == null,
+                        onTap: () => onTypeChanged(null),
+                      ),
+                      ...typeOptions.map(
+                        (type) => _TypeTabChip(
+                          label: type == 'https' ? 'HTTPS' : type.toUpperCase(),
+                          selected: selectedType == type,
+                          onTap: () => onTypeChanged(type),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (hasActiveFilters) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: onClearFilters,
+                      icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                      label: const Text('Clear filters'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${checks.length} check${checks.length == 1 ? '' : 's'}',
+            style: const TextStyle(
+              color: _VpColors.mutedForeground,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 14),
           _MonitoringDistribution(checks: checks),
+          const SizedBox(height: 10),
+          const Text(
+            'Use History & uptime per check (same page as web: filters, then Logs or Uptime summary).',
+            style: TextStyle(
+              color: _VpColors.mutedForeground,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 14),
           _Panel(
             padding: EdgeInsets.zero,
             child: checks.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Text(
-                      'No monitoring checks configured yet.',
-                      style: TextStyle(color: _VpColors.mutedForeground),
+                      hasActiveFilters
+                          ? 'No checks match the current filters.'
+                          : 'No monitoring checks configured yet.',
+                      style: const TextStyle(color: _VpColors.mutedForeground),
                     ),
                   )
                 : Column(
@@ -706,6 +881,7 @@ class _MonitoringTab extends StatelessWidget {
                       return _MonitoringCheckRow(
                         check: check,
                         isPending: isPending,
+                        onOpenHistoryUptime: () => onOpenCheck(check),
                         onRunNow: (isLoading || isPending)
                             ? null
                             : () => onRunNow(check.id),
@@ -722,6 +898,40 @@ class _MonitoringTab extends StatelessWidget {
             _InlineMessage(message: error!, tone: _Tone.danger),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _TypeTabChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TypeTabChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => onTap(),
+        showCheckmark: false,
+        selectedColor: _VpColors.primary.withValues(alpha: 0.14),
+        labelStyle: TextStyle(
+          color: selected ? _VpColors.primary : _VpColors.foreground,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 12,
+        ),
+        side: BorderSide(
+          color: selected ? _VpColors.primary : _VpColors.border,
+        ),
       ),
     );
   }
@@ -1384,11 +1594,13 @@ class _StatusSummaryChip extends StatelessWidget {
 class _MonitoringCheckRow extends StatelessWidget {
   final MonitoringCheck check;
   final bool isPending;
+  final VoidCallback onOpenHistoryUptime;
   final VoidCallback? onRunNow;
 
   const _MonitoringCheckRow({
     required this.check,
     required this.isPending,
+    required this.onOpenHistoryUptime,
     required this.onRunNow,
   });
 
@@ -1398,54 +1610,71 @@ class _MonitoringCheckRow extends StatelessWidget {
     final tone = _toneForStatus(status);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: _VpColors.border)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Dot(tone: tone),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  check.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _VpColors.foreground,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            children: [
+              _Dot(tone: tone),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      check.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _VpColors.foreground,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${check.type.toUpperCase()} ${check.endpoint ?? ''}'.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _VpColors.mutedForeground,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  '${check.type.toUpperCase()} ${check.endpoint ?? ''}'.trim(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _VpColors.mutedForeground,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _StatusPill(label: status, tone: tone),
+              IconButton(
+                tooltip: isPending ? 'Queued' : 'Run now',
+                onPressed: onRunNow,
+                icon: isPending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.play_arrow, size: 20),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          _StatusPill(label: status, tone: tone),
-          const SizedBox(width: 4),
-          IconButton(
-            tooltip: isPending ? 'Queued' : 'Run now',
-            onPressed: onRunNow,
-            icon: isPending
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.play_arrow, size: 20),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onOpenHistoryUptime,
+              icon: const Icon(Icons.insights_outlined, size: 18),
+              label: const Text('History & uptime'),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
           ),
         ],
       ),
