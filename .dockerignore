@@ -1,5 +1,10 @@
 /vendor
 /node_modules
+**/node_modules
+web_dashboard/.next
+web_dashboard/out
+mobile_dashboard/.dart_tool
+mobile_dashboard/build
 .git
 .env
 .env.*
