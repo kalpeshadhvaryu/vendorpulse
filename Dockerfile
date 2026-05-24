@@ -3,10 +3,13 @@
 FROM php:8.4-cli-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git unzip libpq-dev \
+    git unzip libpq-dev libc-client-dev libkrb5-dev \
     && docker-php-ext-install pdo pdo_pgsql pcntl \
     && pecl install redis \
     && docker-php-ext-enable redis \
+    && pecl install imap \
+    && docker-php-ext-enable imap \
+    && php -r "if (! function_exists('imap_open')) { fwrite(STDERR, 'imap extension missing after image build'.PHP_EOL); exit(1); }" \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

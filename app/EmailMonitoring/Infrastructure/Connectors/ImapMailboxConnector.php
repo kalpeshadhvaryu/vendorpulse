@@ -110,10 +110,18 @@ class ImapMailboxConnector implements MailboxConnectorInterface
         }
 
         $config = $this->validatedConfig($mailbox);
-        $stream = $this->openMailbox($config);
-        @imap_close($stream);
+        $stream = null;
 
-        return true;
+        try {
+            $stream = $this->openMailbox($config);
+
+            return true;
+        } finally {
+            if ($stream) {
+                @imap_close($stream);
+            }
+            $this->drainImapDiagnostics();
+        }
     }
 
     /**
@@ -169,14 +177,17 @@ class ImapMailboxConnector implements MailboxConnectorInterface
 
         $mailboxPath = sprintf('{%s:%d%s}%s', $config['host'], $config['port'], $flags, $config['folder']);
 
-        imap_errors();
+        $this->drainImapDiagnostics();
         $stream = @imap_open($mailboxPath, $config['username'], $config['password'], 0, 1, ['DISABLE_AUTHENTICATOR' => 'GSSAPI']);
 
         if (! $stream) {
             $lastError = imap_last_error() ?: 'unknown IMAP error';
+            $this->drainImapDiagnostics();
             $message = $this->mapWorkspaceFriendlyError($lastError);
             throw new RuntimeException($message);
         }
+
+        $this->drainImapDiagnostics();
 
         return $stream;
     }
@@ -200,6 +211,20 @@ class ImapMailboxConnector implements MailboxConnectorInterface
         return is_array($fallback)
             ? array_values(array_map('intval', $fallback))
             : [];
+    }
+
+    /**
+     * Clear queued IMAP warnings so PHP does not emit a second error during request shutdown
+     * (which breaks JSON API responses when APP_DEBUG is enabled).
+     */
+    private function drainImapDiagnostics(): void
+    {
+        if (! function_exists('imap_errors')) {
+            return;
+        }
+
+        imap_errors();
+        imap_alerts();
     }
 
     private function mapWorkspaceFriendlyError(string $error): string

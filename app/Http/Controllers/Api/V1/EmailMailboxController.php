@@ -82,7 +82,18 @@ class EmailMailboxController extends BaseApiController
                 'last_error' => mb_substr($e->getMessage(), 0, 2000),
             ]);
 
-            return ApiResponse::error('Mailbox connection failed: '.$e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+            $detail = $e->getMessage();
+            $responseMessage = str_starts_with($detail, 'IMAP ')
+                || str_starts_with($detail, 'Gmail ')
+                ? $detail
+                : 'Mailbox connection failed: '.$detail;
+
+            return ApiResponse::error($responseMessage, Response::HTTP_UNPROCESSABLE_ENTITY);
+        } finally {
+            if (function_exists('imap_errors')) {
+                imap_errors();
+                imap_alerts();
+            }
         }
     }
 
@@ -102,13 +113,32 @@ class EmailMailboxController extends BaseApiController
     {
         /** @var User|null $user */
         $user = $request->user();
-        $organizationId = app(CurrentOrganization::class)->id();
 
-        if (! $user || ! $organizationId || (string) $mailbox->organization_id !== (string) $organizationId) {
+        if (! $user) {
             return ApiResponse::error('Mailbox not found.', Response::HTTP_NOT_FOUND);
         }
 
-        if (! $user->isAdmin() && ! $user->hasOrganizationRoleInOrganization((string) $organizationId, ['owner', 'admin'])) {
+        $currentOrganization = app(CurrentOrganization::class);
+        $mailboxOrganizationId = (string) $mailbox->organization_id;
+
+        if ($user->isAdmin()) {
+            if (! $currentOrganization->id()) {
+                $currentOrganization->set($mailbox->organization);
+            }
+
+            return null;
+        }
+
+        $organizationId = $currentOrganization->id();
+
+        if (! $organizationId || $mailboxOrganizationId !== (string) $organizationId) {
+            return ApiResponse::error(
+                'Mailbox not found. Select the organization that owns this mailbox in the header switcher.',
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        if (! $user->hasOrganizationRoleInOrganization($mailboxOrganizationId, ['owner', 'admin'])) {
             return ApiResponse::error('You do not have permission to manage mailboxes for this organization.', Response::HTTP_FORBIDDEN);
         }
 

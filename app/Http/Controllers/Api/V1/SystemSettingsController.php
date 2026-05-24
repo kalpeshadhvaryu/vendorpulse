@@ -110,6 +110,7 @@ class SystemSettingsController extends BaseApiController
 
         $checks = [
             'app_key_configured' => trim((string) config('app.key')) !== '',
+            'php_imap_extension' => function_exists('imap_open'),
             'system_settings_table_ready' => $this->hasSystemSettingsTable(),
             'notifications_table_ready' => $this->hasTableSafe('notifications'),
         ];

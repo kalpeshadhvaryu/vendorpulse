@@ -12,6 +12,12 @@ cd ~/projects/vendorpulse/mobile_dashboard && flutter run --dart-define=VP_API_B
 
 Notes
 Do not run npm run dev:api while Docker vendorpulse-app is on port 8000 — the API is already there.
+After changing Dockerfile (IMAP), rebuild PHP containers:
+  docker compose build --no-cache app horizon scheduler && docker compose up -d
+Verify IMAP inside the API container (must print "imap" and "yes"):
+  docker compose exec app php -m | grep -i imap
+  docker compose exec app php -r "echo function_exists('imap_open') ? 'yes' : 'no';"
+If the dashboard points at production, rebuild/restart production the same way — host `php artisan serve` without ext-imap will show the same error.
 Ensure web_dashboard/.env.local has:
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
 Stop everything: docker compose down and Ctrl+C in the frontend terminals.
