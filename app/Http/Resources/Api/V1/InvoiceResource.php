@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\EmailMonitoring\Support\EmailLogInvoiceOutcome;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -28,8 +29,26 @@ class InvoiceResource extends JsonResource
             'paid_at' => $this->paid_at?->toIso8601String(),
             'description' => $this->description,
             'metadata' => $this->metadata,
+            'email_source' => $this->resolveEmailSource(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolveEmailSource(): ?array
+    {
+        $enriched = $this->resource->getAttribute('email_source');
+        if (is_array($enriched)) {
+            return $enriched;
+        }
+
+        $base = EmailLogInvoiceOutcome::invoiceEmailSourceFromMetadata(
+            is_array($this->metadata) ? $this->metadata : null
+        );
+
+        return $base;
     }
 }

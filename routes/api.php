@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\DomainSocialAccountController;
+use App\Http\Controllers\Api\V1\EmailLogController;
 use App\Http\Controllers\Api\V1\EmailMailboxController;
 use App\Http\Controllers\Api\V1\ExperienceMonitoringController;
 use App\Http\Controllers\Api\V1\InvoiceController;
@@ -71,6 +72,8 @@ Route::prefix('v1')->group(function (): void {
 
             Route::post('email-mailboxes/{email_mailbox}/test-connection', [EmailMailboxController::class, 'testConnection']);
             Route::apiResource('email-mailboxes', EmailMailboxController::class);
+            Route::get('email-logs', [EmailLogController::class, 'index']);
+            Route::get('email-logs/{email_log}', [EmailLogController::class, 'show']);
 
             Route::get('organization/smtp-settings', [OrganizationSmtpSettingsController::class, 'show']);
             Route::put('organization/smtp-settings', [OrganizationSmtpSettingsController::class, 'update']);
