@@ -2,12 +2,10 @@
 
 use App\Http\Middleware\EnsureOrganizationContext;
 use App\Http\Middleware\ForceJsonResponse;
-use ErrorException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->is('api/*');
         });
 
-        $exceptions->dontReport(static function (Throwable $e): bool {
+        $exceptions->dontReportWhen(static function (Throwable $e): bool {
             return $e instanceof ErrorException
                 && str_contains($e->getMessage(), 'Can not authenticate to IMAP server');
         });
