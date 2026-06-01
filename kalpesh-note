@@ -1,6 +1,3 @@
-This Scripts works perfectly fine:
-FORCE_RESET=1 ./deploy/release.sh deploy 
-
 For the Backend:
 
 Bash
