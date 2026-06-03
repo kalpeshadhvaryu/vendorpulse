@@ -26,4 +26,12 @@ return [
     'screenshots_disk' => env('EXPERIENCE_MONITORING_SCREENSHOTS_DISK', 'local'),
 
     'screenshots_root' => env('EXPERIENCE_MONITORING_SCREENSHOTS_ROOT', 'experience-monitoring/screenshots'),
+
+    // Playwright browsers installed in the worker image (Docker installs Chromium only).
+    'allowed_browsers' => array_values(array_filter(array_map(
+        trim(...),
+        explode(',', env('EXPERIENCE_MONITORING_ALLOWED_BROWSERS', 'chromium')),
+    ))),
+
+    'default_browser' => env('EXPERIENCE_MONITORING_DEFAULT_BROWSER', 'chromium'),
 ];

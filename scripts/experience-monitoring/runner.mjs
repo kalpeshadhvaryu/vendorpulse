@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { chromium, firefox, webkit } from "playwright";
+import { chromium } from "playwright";
 
 function nowIso() {
   return new Date().toISOString();
@@ -68,8 +68,8 @@ async function run() {
   const rawInput = process.argv[2] ?? "{}";
   const input = JSON.parse(rawInput);
 
-  const browserType = String(input.browser_type ?? "chromium").toLowerCase();
-  const launcher = browserType === "firefox" ? firefox : browserType === "webkit" ? webkit : chromium;
+  const browserType = "chromium";
+  const launcher = chromium;
 
   const timeoutMs = Math.max(1000, Number(input.timeout_ms ?? 30000));
   const startedAt = nowIso();

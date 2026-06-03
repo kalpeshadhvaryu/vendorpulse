@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\ExperienceMonitoring;
 
+use App\ExperienceMonitoring\Support\BrowserTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,7 +25,7 @@ class StoreExperienceMonitoringTestRequest extends FormRequest
             'login_password' => ['required', 'string', 'max:2048'],
             'dashboard_url' => ['required', 'url', 'max:2048'],
             'interval_seconds' => ['nullable', 'integer', 'min:60', 'max:86400'],
-            'browser_type' => ['nullable', 'string', Rule::in(['chromium', 'firefox', 'webkit'])],
+            'browser_type' => ['nullable', 'string', Rule::in(BrowserTypes::allowed())],
             'timeout_ms' => ['nullable', 'integer', 'min:1000', 'max:180000'],
             'concurrent_sessions' => ['nullable', 'integer', 'min:1', 'max:25'],
             'configuration' => ['nullable', 'array'],

@@ -11,7 +11,9 @@
         "dev:dashboard": "npm run dev:restart --prefix web_dashboard",
         "build:mobile:web": "cd mobile_dashboard && flutter build web --debug --base-href /mobile_dashboard/ --dart-define=VP_API_BASE_URL=http://127.0.0.1:8000/api/v1",
         "dev:mobile:web": "npm run build:mobile:web && cd mobile_dashboard && php -S 127.0.0.1:7357 -t build/web",
-        "dev:frontdoor": "concurrently -n next,flutter -c blue,magenta \"npm run dev:dashboard\" \"npm run dev:mobile:web\""
+        "dev:frontdoor": "concurrently -n next,flutter -c blue,magenta \"npm run dev:dashboard\" \"npm run dev:mobile:web\"",
+        "experience-monitoring:install": "npm ci --no-audit --no-fund && npx playwright install --with-deps chromium",
+        "experience-monitoring:verify": "node -e \"require('playwright'); console.log('playwright module ok')\" && npx playwright --version"
     },
     "dependencies": {
         "playwright": "^1.54.2",

@@ -130,6 +130,19 @@ php artisan migrate --force
 php artisan optimize
 
 if [[ "$START_HOST_WORKERS" == "1" ]]; then
+    echo "\n== Experience monitoring (Playwright on host Horizon) =="
+    if command -v node >/dev/null 2>&1 && [[ -f "$ROOT_DIR/package.json" ]]; then
+        cd "$ROOT_DIR"
+        if [[ -f package-lock.json ]]; then
+            npm ci --omit=dev --no-audit --no-fund
+        else
+            npm install --omit=dev --no-audit --no-fund
+        fi
+        npx playwright install --with-deps chromium
+    else
+        echo "⚠️ Node not found — experience monitoring (VAPT) jobs will fail until Node + Playwright are installed"
+    fi
+
     if pgrep -f "artisan horizon" >/dev/null 2>&1; then
         php artisan horizon:terminate || true
     fi

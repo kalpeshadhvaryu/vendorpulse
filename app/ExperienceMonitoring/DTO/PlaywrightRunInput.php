@@ -2,6 +2,7 @@
 
 namespace App\ExperienceMonitoring\DTO;
 
+use App\ExperienceMonitoring\Support\BrowserTypes;
 use App\Models\ExperienceMonitoringTest;
 
 class PlaywrightRunInput
@@ -30,7 +31,7 @@ class PlaywrightRunInput
             loginUsername: (string) $test->login_username,
             loginPassword: (string) $test->login_password,
             dashboardUrl: (string) $test->dashboard_url,
-            browserType: (string) $test->browser_type,
+            browserType: BrowserTypes::normalize($test->browser_type),
             timeoutMs: (int) $test->timeout_ms,
             sessionIndex: $sessionIndex,
             configuration: is_array($test->configuration) ? $test->configuration : [],

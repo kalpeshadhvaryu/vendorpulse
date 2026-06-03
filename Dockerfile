@@ -4,6 +4,7 @@ FROM php:8.4-cli-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git unzip libpq-dev libc-client-dev libkrb5-dev \
+    nodejs npm \
     && docker-php-ext-install pdo pdo_pgsql pcntl \
     && pecl install redis \
     && docker-php-ext-enable redis \
@@ -23,6 +24,10 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
+
+# VAPT: Horizon runs Playwright (Chromium installed; use browser_type=chromium on tests).
+RUN npm ci --omit=dev --no-audit --no-fund \
+    && npx playwright install --with-deps chromium
 
 EXPOSE 8000
 

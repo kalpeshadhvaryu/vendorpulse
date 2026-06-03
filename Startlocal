@@ -1,5 +1,5 @@
 One-shot cheat sheet (copy/paste)
-# Terminal 1 — backend
+# Terminal 1 — backend (default :8000; for :8001 set APP_PORT=8001 in .env — see Notes)
 cd ~/projects/vendorpulse && docker compose up -d --build
 # Terminal 2 — web + mobile web
 cd ~/projects/vendorpulse && npm run dev:frontdoor
@@ -17,8 +17,15 @@ After changing Dockerfile (IMAP), rebuild PHP containers:
 Verify IMAP inside the API container (must print "imap" and "yes"):
   docker compose exec app php -m | grep -i imap
   docker compose exec app php -r "echo function_exists('imap_open') ? 'yes' : 'no';"
+Experience monitoring (VAPT / Playwright) needs Node + Chromium on the Horizon worker:
+  npm run experience-monitoring:install          # host-only Horizon
+  docker compose exec horizon node -v
+  docker compose exec horizon npx playwright --version
+After Dockerfile changes, rebuild horizon too:
+  docker compose build --no-cache horizon && docker compose up -d horizon
 If the dashboard points at production, rebuild/restart production the same way — host `php artisan serve` without ext-imap will show the same error.
-Ensure web_dashboard/.env.local has:
+Ensure web_dashboard/.env.local has (match APP_PORT in root .env):
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+For port 8001 instead: APP_PORT=8001 in .env and NEXT_PUBLIC_API_URL=http://127.0.0.1:8001/api/v1
 Stop everything: docker compose down and Ctrl+C in the frontend terminals.
 If you want live PHP edits inside Docker without rebuilds, use the bind overlay from docker-compose.yml:
