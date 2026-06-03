@@ -61,3 +61,24 @@ git pull
 docker compose build --no-cache horizon
 docker compose up -d app horizon scheduler
 docker compose exec horizon npx playwright --version
+
+#for both 
+This command works well for publishing
+cd /var/www/vendorpulse
+git pull origin kalpesh
+php artisan config:clear
+php artisan optimize
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec horizon php artisan horizon:terminate
+docker compose -f docker-compose.yml -f docker-compose.bind.yml restart horizon
+
+Another process for web_dashboard and localhost
+cd /var/www/vendorpulse
+git pull origin kalpesh
+php artisan config:clear
+php artisan optimize
+
+cd web_dashboard
+npm ci
+npm run build
+cd ..
+pm2 restart vendorpulse-frontend

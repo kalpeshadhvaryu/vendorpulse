@@ -49,6 +49,12 @@ Route::prefix('v1')->group(function (): void {
         Route::put('settings/main-smtp', [SystemSettingsController::class, 'updateMainSmtpSettings']);
         Route::post('settings/main-smtp/test', [SystemSettingsController::class, 'sendMainSmtpTestEmail']);
 
+        // Screenshot bytes: auth only (org header optional). Scoped route model binding caused 404s.
+        Route::get(
+            'experience-monitoring-screenshots/{experience_monitoring_screenshot}/file',
+            [ExperienceMonitoringController::class, 'screenshotFile']
+        );
+
         Route::middleware('organization.context')->group(function (): void {
             Route::get('dashboard/trends', [DashboardAnalyticsController::class, 'trends']);
             Route::get('dashboard/monitoring-create-fallbacks', [DashboardAnalyticsController::class, 'monitoringCreateFallbacks']);
@@ -67,7 +73,6 @@ Route::prefix('v1')->group(function (): void {
             Route::get('experience-monitoring-tests/{experience_monitoring_test}/report', [ExperienceMonitoringController::class, 'report']);
             Route::get('experience-monitoring-tests/{experience_monitoring_test}/screenshots', [ExperienceMonitoringController::class, 'screenshots']);
             Route::post('experience-monitoring-tests/{experience_monitoring_test}/trigger', [ExperienceMonitoringController::class, 'trigger']);
-            Route::get('experience-monitoring-screenshots/{experience_monitoring_screenshot}/file', [ExperienceMonitoringController::class, 'screenshotFile']);
             Route::apiResource('experience-monitoring-tests', ExperienceMonitoringController::class);
 
             Route::post('email-mailboxes/{email_mailbox}/test-connection', [EmailMailboxController::class, 'testConnection']);
