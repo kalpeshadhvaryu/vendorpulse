@@ -9,11 +9,28 @@ echo "== Workers: ensure Horizon + scheduler =="
 
 mkdir -p storage/logs
 
+HORIZON_USER="${HORIZON_USER:-www-data}"
+run_horizon() {
+    if [[ "$(id -u)" -eq 0 ]] && id "$HORIZON_USER" &>/dev/null; then
+        sudo -u "$HORIZON_USER" nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+    else
+        nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+    fi
+}
+
+run_scheduler() {
+    if [[ "$(id -u)" -eq 0 ]] && id "$HORIZON_USER" &>/dev/null; then
+        sudo -u "$HORIZON_USER" nohup php artisan schedule:work > "$ROOT_DIR/storage/logs/scheduler-host.log" 2>&1 &
+    else
+        nohup php artisan schedule:work > "$ROOT_DIR/storage/logs/scheduler-host.log" 2>&1 &
+    fi
+}
+
 if pgrep -f "artisan horizon" >/dev/null 2>&1; then
     php artisan horizon:terminate || true
 fi
 
-nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+run_horizon
 
 horizon_ok=0
 for _ in {1..12}; do
@@ -23,7 +40,7 @@ for _ in {1..12}; do
     fi
 
     if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
-        nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+        run_horizon
     fi
 
     sleep 1
@@ -37,7 +54,7 @@ if [[ "$horizon_ok" != "1" ]]; then
 fi
 
 if ! pgrep -f "artisan schedule:work" >/dev/null 2>&1; then
-    nohup php artisan schedule:work > "$ROOT_DIR/storage/logs/scheduler-host.log" 2>&1 &
+    run_scheduler
 fi
 
 php artisan horizon:status || true

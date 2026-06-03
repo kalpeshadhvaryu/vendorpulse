@@ -42,6 +42,15 @@ tail -n 80 storage/logs/horizon-host.log
 
 4) Create test fails — select one organization in dashboard (not All organizations)
 
+5) Screenshot 404 "Screenshot file not found" but file exists on host
+   Dirs created by root Horizon are drwx------ — www-data (PHP) cannot read.
+   Fix existing files:
+   find storage/app/private/experience-monitoring -type d -exec chmod 755 {} \;
+   find storage/app/private/experience-monitoring -type f -exec chmod 644 {} \;
+   chown -R www-data:www-data storage/app/private/experience-monitoring
+   Restart Horizon as www-data: ./deploy/workers_up.sh
+   Re-test curl screenshot endpoint (expect HTTP 200)
+
 ---
 
 Quick health

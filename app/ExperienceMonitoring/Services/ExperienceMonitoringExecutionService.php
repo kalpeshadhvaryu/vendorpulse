@@ -194,8 +194,30 @@ class ExperienceMonitoringExecutionService
             Carbon::now()->format('Y/m/d').'/'.
             Str::slug($test->name).'-'.$runId.'.'.$extension;
 
-        Storage::disk((string) config('experience-monitoring.screenshots_disk', 'local'))->put($path, $decoded);
+        $disk = Storage::disk((string) config('experience-monitoring.screenshots_disk', 'local'));
+        $disk->put($path, $decoded);
+        $this->ensureStoragePathReadable($disk->path($path));
 
         return $path;
+    }
+
+    private function ensureStoragePathReadable(string $absolutePath): void
+    {
+        if (! is_file($absolutePath)) {
+            return;
+        }
+
+        @chmod($absolutePath, 0644);
+
+        $dir = dirname($absolutePath);
+        $storageRoot = storage_path('app');
+
+        while (str_starts_with($dir, $storageRoot) && $dir !== $storageRoot) {
+            if (is_dir($dir)) {
+                @chmod($dir, 0755);
+            }
+
+            $dir = dirname($dir);
+        }
     }
 }
