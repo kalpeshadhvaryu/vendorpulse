@@ -52,11 +52,15 @@ tail -n 80 storage/logs/horizon-host.log
    Restart Horizon as www-data: ./deploy/workers_up.sh
    Re-test curl screenshot endpoint (expect HTTP 200)
 
-6) Status stuck on error — read last_error on list or:
+6) Status error — Executable doesn't exist at /var/www/.cache/ms-playwright/...
+   Horizon (www-data) is not using project browsers. Fix:
+   grep PLAYWRIGHT_BROWSERS_PATH .env || echo 'PLAYWRIGHT_BROWSERS_PATH=/var/www/vendorpulse/.playwright-browsers' >> .env
+   export PLAYWRIGHT_BROWSERS_PATH=/var/www/vendorpulse/.playwright-browsers
+   npm run experience-monitoring:install
+   chown -R www-data:www-data .playwright-browsers
+   php artisan config:clear && php artisan optimize
+   ./deploy/workers_up.sh
    RUN_SYNC=1 ./deploy/diagnose_vapt.sh myvogue
-   tail -n 50 storage/logs/horizon-host.log
-   sudo -u www-data node scripts/experience-monitoring/runner.mjs '{}'  # quick node check
-   After deploy: runner no longer uses networkidle (WHMCS fix); job timeout 300s
 
 ---
 

@@ -40,11 +40,24 @@ if [[ -f .env ]]; then
     fi
 
     BROWSERS="$(grep -E '^PLAYWRIGHT_BROWSERS_PATH=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || true)"
-    if [[ -n "$BROWSERS" ]]; then
-        echo "     PLAYWRIGHT_BROWSERS_PATH=$BROWSERS"
-        check "Playwright browsers directory exists" test -d "$BROWSERS"
+    if [[ -z "$BROWSERS" ]]; then
+        BROWSERS="$ROOT_DIR/.playwright-browsers"
+    fi
+    echo "     PLAYWRIGHT_BROWSERS_PATH=$BROWSERS"
+    check "Playwright browsers directory exists" test -d "$BROWSERS"
+    if find "$BROWSERS" \( -name 'chrome-headless-shell' -o -name 'chrome' \) -type f 2>/dev/null | grep -q .; then
+        echo "OK   Playwright chromium binary present"
+    else
+        echo "FAIL Playwright chromium binary present"
+        fail=1
+    fi
+    HORIZON_USER="${HORIZON_USER:-www-data}"
+    if id "$HORIZON_USER" &>/dev/null; then
+        check "www-data can read Playwright browsers" sudo -u "$HORIZON_USER" test -r "$BROWSERS"
     fi
 fi
+
+php artisan tinker --execute="echo 'config playwright path: '.config('experience-monitoring.playwright_browsers_path').PHP_EOL;" 2>/dev/null || true
 
 check "playwright npm module" test -d node_modules/playwright
 if [[ -x "${NODE_BIN:-}" && -f package.json ]]; then

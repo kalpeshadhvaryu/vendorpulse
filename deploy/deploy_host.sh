@@ -126,45 +126,7 @@ stop_docker_queue_workers() {
 
 start_host_workers() {
     echo "\n== Start host Horizon + scheduler =="
-    cd "$ROOT_DIR"
-
-    local browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT_DIR/.playwright-browsers}"
-    if [[ -f .env ]]; then
-        browsers_path="$(grep -E '^PLAYWRIGHT_BROWSERS_PATH=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || echo "$browsers_path")"
-    fi
-    export PLAYWRIGHT_BROWSERS_PATH="$browsers_path"
-
-    if pgrep -f "artisan horizon" >/dev/null 2>&1; then
-        php artisan horizon:terminate || true
-    fi
-
-    if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
-        nohup env PLAYWRIGHT_BROWSERS_PATH="$browsers_path" php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
-    fi
-
-    local horizon_ok=0
-    for _ in {1..12}; do
-        if php artisan horizon:status 2>/dev/null | grep -Eiq "running|active"; then
-            horizon_ok=1
-            break
-        fi
-
-        if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
-            nohup env PLAYWRIGHT_BROWSERS_PATH="$browsers_path" php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
-        fi
-
-        sleep 1
-    done
-
-    if [[ "$horizon_ok" != "1" ]]; then
-        echo "❌ Horizon did not become active after restart"
-        tail -n 40 "$ROOT_DIR/storage/logs/horizon-host.log" 2>/dev/null || true
-        exit 1
-    fi
-
-    if ! pgrep -f "artisan schedule:work" >/dev/null 2>&1; then
-        nohup php artisan schedule:work > "$ROOT_DIR/storage/logs/scheduler-host.log" 2>&1 &
-    fi
+    "$ROOT_DIR/deploy/workers_up.sh"
 }
 
 wait_for_compose_service() {

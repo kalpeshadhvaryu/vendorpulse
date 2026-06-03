@@ -38,5 +38,5 @@ return [
     'default_browser' => env('EXPERIENCE_MONITORING_DEFAULT_BROWSER', 'chromium'),
 
     // Shared browser cache for host Horizon (see deploy/deploy_host.sh).
-    'playwright_browsers_path' => env('PLAYWRIGHT_BROWSERS_PATH', ''),
+    'playwright_browsers_path' => env('PLAYWRIGHT_BROWSERS_PATH') ?: base_path('.playwright-browsers'),
 ];
