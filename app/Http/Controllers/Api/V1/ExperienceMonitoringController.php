@@ -11,12 +11,12 @@ use App\Http\Requests\Api\V1\ExperienceMonitoring\UpdateExperienceMonitoringTest
 use App\Http\Resources\Api\V1\ExperienceMonitoringRunResource;
 use App\Http\Resources\Api\V1\ExperienceMonitoringScreenshotResource;
 use App\Http\Resources\Api\V1\ExperienceMonitoringTestResource;
-use App\Models\ExperienceMonitoringScreenshot;
 use App\Models\ExperienceMonitoringTest;
 use App\Repositories\Contracts\ExperienceMonitoringRepositoryInterface;
 use App\Support\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -140,24 +140,43 @@ class ExperienceMonitoringController extends BaseApiController
         );
     }
 
-    public function screenshotFile(ExperienceMonitoringScreenshot $experienceMonitoringScreenshot)
+    public function screenshotFile(Request $request, string $experience_monitoring_screenshot): JsonResponse|Response
     {
-        $disk = Storage::disk((string) config('experience-monitoring.screenshots_disk', 'local'));
-        $path = is_string($experienceMonitoringScreenshot->path) ? trim($experienceMonitoringScreenshot->path) : '';
+        $screenshot = $this->repository->findScreenshot($experience_monitoring_screenshot);
 
+        if (! $screenshot) {
+            return ApiResponse::error('Screenshot not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        $user = $request->user();
+        if ($user && $user->isAdmin() !== true && ! $user->belongsToOrganization((string) $screenshot->organization_id)) {
+            return ApiResponse::error('You do not have access to this screenshot.', Response::HTTP_FORBIDDEN);
+        }
+
+        $path = is_string($screenshot->path) ? trim($screenshot->path) : '';
         if ($path === '') {
             return ApiResponse::error('Screenshot file not found.', Response::HTTP_NOT_FOUND);
         }
 
-        if ($disk->exists($path)) {
-            return response($disk->get($path), Response::HTTP_OK, [
-                'Content-Type' => $experienceMonitoringScreenshot->mime_type,
-                'Cache-Control' => 'private, max-age=60',
-            ]);
+        $contents = $this->readScreenshotContents($path);
+        if ($contents === null) {
+            return ApiResponse::error('Screenshot file not found.', Response::HTTP_NOT_FOUND);
         }
 
-        // Fallback for runtime/config drift where screenshot files were written under
-        // a different local root (storage/app/private vs storage/app).
+        return response($contents, Response::HTTP_OK, [
+            'Content-Type' => $screenshot->mime_type ?: 'image/png',
+            'Cache-Control' => 'private, max-age=60',
+        ]);
+    }
+
+    private function readScreenshotContents(string $path): ?string
+    {
+        $disk = Storage::disk((string) config('experience-monitoring.screenshots_disk', 'local'));
+
+        if ($disk->exists($path)) {
+            return $disk->get($path);
+        }
+
         $normalizedPath = ltrim($path, '/');
         $fallbackCandidates = [
             storage_path('app/private/'.$normalizedPath),
@@ -172,16 +191,10 @@ class ExperienceMonitoringController extends BaseApiController
             }
 
             $contents = @file_get_contents($candidate);
-            if ($contents === false) {
-                continue;
-            }
 
-            return response($contents, Response::HTTP_OK, [
-                'Content-Type' => $experienceMonitoringScreenshot->mime_type,
-                'Cache-Control' => 'private, max-age=60',
-            ]);
+            return $contents === false ? null : $contents;
         }
 
-        return ApiResponse::error('Screenshot file not found.', Response::HTTP_NOT_FOUND);
+        return null;
     }
 }

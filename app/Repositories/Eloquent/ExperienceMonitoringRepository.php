@@ -116,7 +116,7 @@ class ExperienceMonitoringRepository implements ExperienceMonitoringRepositoryIn
 
     public function findScreenshot(string $id): ?ExperienceMonitoringScreenshot
     {
-        return ExperienceMonitoringScreenshot::query()->whereKey($id)->first();
+        return ExperienceMonitoringScreenshot::query()->withoutGlobalScopes()->whereKey($id)->first();
     }
 
     public function dueEnabledTestIds(Carbon $now, int $limit = 1000): Collection
