@@ -2,7 +2,9 @@
 
 namespace App\ExperienceMonitoring\Jobs;
 
+use App\ExperienceMonitoring\Services\ExperienceMonitoringExecutionService;
 use App\Repositories\Contracts\ExperienceMonitoringRepositoryInterface;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,7 +32,25 @@ class RunExperienceMonitoringTestJob implements ShouldQueue
         ExperienceMonitoringRepositoryInterface $repository,
     ): void {
         $test = $repository->findTest($this->testId);
-        if (! $test || ! $test->enabled) {
+        if (! $test) {
+            Log::warning('Experience monitoring test not found for queued run.', ['test_id' => $this->testId]);
+            app(ExperienceMonitoringExecutionService::class)->markExecutionFailed(
+                $this->testId,
+                1,
+                'Experience monitoring test not found.',
+            );
+
+            return;
+        }
+
+        if (! $test->enabled) {
+            Log::info('Experience monitoring test is disabled; skipping queued run.', ['test_id' => $this->testId]);
+            app(ExperienceMonitoringExecutionService::class)->markExecutionFailed(
+                $this->testId,
+                1,
+                'Experience monitoring test is disabled.',
+            );
+
             return;
         }
 

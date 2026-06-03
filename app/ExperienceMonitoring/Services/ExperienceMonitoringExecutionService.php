@@ -25,6 +25,12 @@ class ExperienceMonitoringExecutionService
         $test = $this->repository->findTest($testId);
 
         if (! $test || ! $test->enabled) {
+            if (! $test) {
+                $this->markExecutionFailed($testId, $sessionIndex, 'Experience monitoring test not found.');
+            } elseif (! $test->enabled) {
+                $this->markExecutionFailed($testId, $sessionIndex, 'Experience monitoring test is disabled.');
+            }
+
             return;
         }
 
@@ -119,19 +125,19 @@ class ExperienceMonitoringExecutionService
 
             $this->alerts->dispatchAlerts($test, $run->fresh());
         } catch (Throwable $e) {
-            $this->markExecutionFailed($test, $testId, $sessionIndex, $e->getMessage());
+            $this->markExecutionFailed($testId, $sessionIndex, $e->getMessage());
         }
     }
 
-    public function markExecutionFailed(?ExperienceMonitoringTest $test, string $testId, int $sessionIndex, string $message): void
+    public function markExecutionFailed(string $testId, int $sessionIndex, string $message): void
     {
+        $test = $this->repository->findTest($testId);
+
         Log::error('Experience monitoring execution failed.', [
             'test_id' => $testId,
             'session_index' => $sessionIndex,
             'error' => $message,
         ]);
-
-        $test ??= $this->repository->findTest($testId);
 
         if (! $test instanceof ExperienceMonitoringTest) {
             return;

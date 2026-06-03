@@ -64,7 +64,6 @@ class RunExperienceMonitoringSessionJob implements ShouldQueue
         }
 
         app(ExperienceMonitoringExecutionService::class)->markExecutionFailed(
-            null,
             $this->testId,
             $this->sessionIndex,
             $exception?->getMessage() ?? 'Experience monitoring job failed after retries.',
