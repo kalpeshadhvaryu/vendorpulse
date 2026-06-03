@@ -7,7 +7,63 @@ Always run from: /var/www/vendorpulse  (NOT /var/www/exportdoc)
 
 ---
 
-Deploy
+FINAL DEPLOY (after git push — backend + frontend)
+
+Branch: kalpesh (both vendorpulse repo and web_dashboard subfolder)
+
+Backend files changed (VAPT fix):
+  app/ExperienceMonitoring/Services/ExperienceMonitoringExecutionService.php  (screenshot chmod)
+  app/ExperienceMonitoring/Services/PlaywrightRunnerService.php             (parse JSON even on stderr)
+  app/ExperienceMonitoring/Jobs/RunExperienceMonitoringSessionJob.php       (job timeout 300s)
+  app/Http/Controllers/Api/V1/ExperienceMonitoringController.php            (screenshot route)
+  app/Repositories/Eloquent/ExperienceMonitoringRepository.php
+  config/experience-monitoring.php   (default PLAYWRIGHT path, job timeout)
+  config/horizon.php                 (experience-monitoring supervisor timeout 330s)
+  scripts/experience-monitoring/runner.mjs  (WHMCS-friendly, no networkidle)
+  deploy/workers_up.sh               (www-data Horizon + PLAYWRIGHT_BROWSERS_PATH)
+  deploy/deploy_host.sh              (calls workers_up.sh)
+  deploy/verify_vapt.sh
+  routes/api.php
+
+Frontend files changed (web_dashboard/):
+  app/(main)/monitoring/experience/page.tsx          (show last_error on list)
+  app/(main)/monitoring/experience/[testId]/page.tsx (screenshot blob errors)
+  lib/api/client.ts                                  (X-Organization-Id for screenshots)
+
+Required .env on production:
+  EXPERIENCE_MONITORING_RUNNER_COMMAND=/usr/bin/node
+  PLAYWRIGHT_BROWSERS_PATH=/var/www/vendorpulse/.playwright-browsers
+
+One-time server setup (if not already done):
+  npm run experience-monitoring:install
+  chown -R www-data:www-data .playwright-browsers storage/app/private/experience-monitoring
+  find storage/app/private/experience-monitoring -type d -exec chmod 755 {} \;
+  find storage/app/private/experience-monitoring -type f -exec chmod 644 {} \;
+
+Deploy commands (production):
+
+cd /var/www/vendorpulse
+git pull origin kalpesh
+php artisan config:clear
+php artisan optimize
+./deploy/workers_up.sh
+./deploy/verify_vapt.sh
+
+cd web_dashboard
+git pull origin kalpesh
+npm ci
+npm run build
+cd ..
+pm2 restart vendorpulse-frontend
+
+Smoke test:
+  RUN_SYNC=1 ./deploy/diagnose_vapt.sh myvogue    # expect last_status=ok
+  php artisan queue:failed                         # expect empty
+
+Or full release script:
+  FORCE_RESET=1 ./deploy/release.sh deploy
+
+---
 
 cd /var/www/vendorpulse
 FORCE_RESET=1 ./deploy/release.sh deploy
