@@ -1,134 +1,63 @@
 Experience Monitoring (VAPT) — production ops
 
 Full guide: deploy/experience-monitoring-production.md
+Deploy path: FORCE_RESET=1 ./deploy/release.sh deploy  (host Horizon, NOT docker horizon)
+
 Always run from: /var/www/vendorpulse  (NOT /var/www/exportdoc)
 
 ---
 
-Quick deploy
+Deploy
+
+cd /var/www/vendorpulse
+FORCE_RESET=1 ./deploy/release.sh deploy
+./deploy/verify_vapt.sh
+
+---
+
+VAPT broken after deploy — fix now
+
+1) Wrong Node path in .env (very common)
+   php artisan optimize caches EXPERIENCE_MONITORING_RUNNER_COMMAND
+   Remove dev nvm path; use server node:
+   which node
+   # edit .env:
+   # EXPERIENCE_MONITORING_RUNNER_COMMAND=/usr/bin/node
+   # PLAYWRIGHT_BROWSERS_PATH=/var/www/vendorpulse/.playwright-browsers
+
+cd /var/www/vendorpulse
+npm run experience-monitoring:install
+php artisan config:clear
+php artisan optimize
+./deploy/workers_up.sh
+./deploy/verify_vapt.sh
+
+2) Stop Docker workers (this server uses host Horizon)
+docker compose stop horizon scheduler app
+./deploy/workers_up.sh
+
+3) Check failures
+php artisan queue:failed
+tail -n 80 storage/logs/horizon-host.log
+
+4) Create test fails — select one organization in dashboard (not All organizations)
+
+---
+
+Quick health
+
+cd /var/www/vendorpulse
+./deploy/verify_vapt.sh
+php artisan horizon:status
+php artisan queue:failed
+docker compose ps
+
+---
+
+Docker-only stack (local / alternate server)
 
 cd /var/www/vendorpulse
 git pull
 docker compose build --no-cache horizon
 docker compose up -d app horizon scheduler
-docker compose exec app php artisan config:clear
-docker compose exec app php artisan route:clear
 docker compose exec horizon npx playwright --version
-
-Then trigger a test from the dashboard and confirm the screenshot loads.
-
----
-
-When monitoring does not work
-
-Rebuild horizon (Playwright is in that image):
-
-cd /var/www/vendorpulse
-docker compose build --no-cache horizon
-docker compose up -d app horizon scheduler
-
-Check containers are up:
-
-docker compose ps
-
-Check scheduler logs:
-
-docker compose logs scheduler --tail=20
-
-Check horizon status + failed jobs:
-
-docker compose exec app php artisan horizon:status
-docker compose exec app php artisan queue:failed
-
-Follow horizon logs:
-
-docker compose logs -f horizon --tail=50
-
-Install Playwright inside horizon if missing:
-
-docker compose exec horizon npm run experience-monitoring:install
-docker compose exec horizon npm run experience-monitoring:verify
-
-.env: do NOT set EXPERIENCE_MONITORING_RUNNER_COMMAND to a host nvm path inside Docker.
-Use default `node` (unset the variable) or:
-
-docker compose exec horizon which node
-
----
-
-Screenshot 404 / not visible
-
-app + horizon must share vendorpulse_storage volume (docker-compose.yml).
-
-After compose change:
-
-cd /var/www/vendorpulse
-docker compose up -d app horizon
-
-Verify both containers see the same files:
-
-docker compose exec horizon ls -la storage/app/experience-monitoring/screenshots/
-docker compose exec app ls -la storage/app/experience-monitoring/screenshots/
-
-Re-run the VAPT test from the dashboard (old runs may have DB rows but missing files).
-
----
-
-Fix old firefox/webkit tests (optional)
-
-docker compose exec app php artisan tinker --execute="
-\App\Models\ExperienceMonitoringTest::whereIn('browser_type', ['firefox','webkit'])->update(['browser_type' => 'chromium']);
-"
-
----
-
-Check last test result (CLI)
-
-docker compose exec app php artisan tinker --execute="
-\$t = \App\Models\ExperienceMonitoringTest::latest()->first();
-echo \$t?->name.' last='.\$t?->last_status.' at='.\$t?->last_run_at;
-"
-
----
-
-js_error status
-
-Playwright succeeded; target page logged console.error (often ExportDoc 404/Vite/API).
-See run History → browser logs / failed requests in the dashboard.
-Login can succeed while status is js_error.
-
----
-
-Port 8001 (when 8000 is taken by ExportDoc)
-
-In /var/www/vendorpulse/.env:
-  APP_PORT=8001
-  APP_URL=http://127.0.0.1:8001
-
-In web_dashboard/.env.local:
-  NEXT_PUBLIC_API_URL=http://127.0.0.1:8001/api/v1
-
-Then:
-
-cd /var/www/vendorpulse
-docker compose up -d --build app horizon scheduler
-
-API: http://127.0.0.1:8001/api/v1
-
----
-
-Dashboard deploy (if separate)
-
-cd /var/www/vendorpulse/web_dashboard
-npm ci
-npm run build
-# restart Next.js (pm2/systemd)
-
----
-
-Host workers (non-Docker Horizon)
-
-cd /var/www/vendorpulse
-npm run experience-monitoring:install
-npm run experience-monitoring:verify
-./deploy/workers_up.sh

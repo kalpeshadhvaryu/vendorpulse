@@ -64,6 +64,109 @@ sync_repo() {
     fi
 }
 
+set_env_key() {
+    local key="$1"
+    local value="$2"
+
+    if grep -qE "^${key}=" .env; then
+        sed -i.bak "s|^${key}=.*|${key}=${value}|" .env
+    else
+        echo "${key}=${value}" >> .env
+    fi
+}
+
+ensure_experience_monitoring() {
+    echo "\n== Experience monitoring (Playwright / VAPT prerequisites) =="
+    cd "$ROOT_DIR"
+
+    local node_bin
+    node_bin="$(command -v node || true)"
+    if [[ -z "$node_bin" ]]; then
+        echo "❌ Node.js not found on PATH (required for VAPT Playwright runner)"
+        exit 1
+    fi
+
+    local browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT_DIR/.playwright-browsers}"
+    mkdir -p "$browsers_path"
+    export PLAYWRIGHT_BROWSERS_PATH="$browsers_path"
+
+    if [[ -f .env ]]; then
+        local configured_runner
+        configured_runner="$(grep -E '^EXPERIENCE_MONITORING_RUNNER_COMMAND=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || true)"
+        if [[ -n "$configured_runner" && ! -x "$configured_runner" ]]; then
+            echo "⚠️ Invalid EXPERIENCE_MONITORING_RUNNER_COMMAND ($configured_runner) — updating to $node_bin"
+            set_env_key "EXPERIENCE_MONITORING_RUNNER_COMMAND" "$node_bin"
+        elif [[ -z "$configured_runner" ]]; then
+            set_env_key "EXPERIENCE_MONITORING_RUNNER_COMMAND" "$node_bin"
+        fi
+
+        local configured_browsers
+        configured_browsers="$(grep -E '^PLAYWRIGHT_BROWSERS_PATH=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || true)"
+        if [[ -z "$configured_browsers" ]]; then
+            set_env_key "PLAYWRIGHT_BROWSERS_PATH" "$browsers_path"
+        fi
+    fi
+
+    if [[ -f package-lock.json ]]; then
+        npm ci --omit=dev --no-audit --no-fund
+    else
+        npm install --omit=dev --no-audit --no-fund
+    fi
+
+    npx playwright install --with-deps chromium
+    npm run experience-monitoring:verify
+
+    echo "✅ VAPT ready: node=$node_bin browsers=$browsers_path"
+}
+
+stop_docker_queue_workers() {
+    echo "\n== Stop Docker app/horizon/scheduler (this server uses host Horizon) =="
+    "${COMPOSE[@]}" stop horizon scheduler app 2>/dev/null || true
+}
+
+start_host_workers() {
+    echo "\n== Start host Horizon + scheduler =="
+    cd "$ROOT_DIR"
+
+    local browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT_DIR/.playwright-browsers}"
+    if [[ -f .env ]]; then
+        browsers_path="$(grep -E '^PLAYWRIGHT_BROWSERS_PATH=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || echo "$browsers_path")"
+    fi
+    export PLAYWRIGHT_BROWSERS_PATH="$browsers_path"
+
+    if pgrep -f "artisan horizon" >/dev/null 2>&1; then
+        php artisan horizon:terminate || true
+    fi
+
+    if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
+        nohup env PLAYWRIGHT_BROWSERS_PATH="$browsers_path" php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+    fi
+
+    local horizon_ok=0
+    for _ in {1..12}; do
+        if php artisan horizon:status 2>/dev/null | grep -Eiq "running|active"; then
+            horizon_ok=1
+            break
+        fi
+
+        if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
+            nohup env PLAYWRIGHT_BROWSERS_PATH="$browsers_path" php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
+        fi
+
+        sleep 1
+    done
+
+    if [[ "$horizon_ok" != "1" ]]; then
+        echo "❌ Horizon did not become active after restart"
+        tail -n 40 "$ROOT_DIR/storage/logs/horizon-host.log" 2>/dev/null || true
+        exit 1
+    fi
+
+    if ! pgrep -f "artisan schedule:work" >/dev/null 2>&1; then
+        nohup php artisan schedule:work > "$ROOT_DIR/storage/logs/scheduler-host.log" 2>&1 &
+    fi
+}
+
 wait_for_compose_service() {
     local service="$1"
     local timeout="${2:-60}"
@@ -125,55 +228,15 @@ mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage
 chmod -R ug+rwX storage bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
+ensure_experience_monitoring
+
 php artisan optimize:clear
 php artisan migrate --force
 php artisan optimize
 
 if [[ "$START_HOST_WORKERS" == "1" ]]; then
-    echo "\n== Experience monitoring (Playwright on host Horizon) =="
-    if command -v node >/dev/null 2>&1 && [[ -f "$ROOT_DIR/package.json" ]]; then
-        cd "$ROOT_DIR"
-        if [[ -f package-lock.json ]]; then
-            npm ci --omit=dev --no-audit --no-fund
-        else
-            npm install --omit=dev --no-audit --no-fund
-        fi
-        npx playwright install --with-deps chromium
-    else
-        echo "⚠️ Node not found — experience monitoring (VAPT) jobs will fail until Node + Playwright are installed"
-    fi
-
-    if pgrep -f "artisan horizon" >/dev/null 2>&1; then
-        php artisan horizon:terminate || true
-    fi
-
-    # Ensure Horizon is running after terminate/redeploy.
-    if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
-        nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
-    fi
-
-    horizon_ok=0
-    for _ in {1..10}; do
-        if php artisan horizon:status 2>/dev/null | grep -Eiq "running|active"; then
-            horizon_ok=1
-            break
-        fi
-
-        if ! pgrep -f "artisan horizon" >/dev/null 2>&1; then
-            nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &
-        fi
-
-        sleep 1
-    done
-
-    if [[ "$horizon_ok" != "1" ]]; then
-        echo "❌ Horizon did not become active after restart"
-        exit 1
-    fi
-
-    if ! pgrep -f "artisan schedule:work" >/dev/null 2>&1; then
-        nohup php artisan schedule:work > "$ROOT_DIR/storage/logs/scheduler-host.log" 2>&1 &
-    fi
+    stop_docker_queue_workers
+    start_host_workers
 fi
 
 if [[ $down_active -eq 1 ]]; then
@@ -197,6 +260,7 @@ echo "\n== Quick verification =="
 cd "$ROOT_DIR"
 php artisan horizon:status || true
 php artisan queue:failed || true
+bash "$ROOT_DIR/deploy/verify_vapt.sh" || true
 php artisan tinker --execute="dump(Illuminate\\Support\\Facades\\Schema::hasColumns('organizations', ['phone_country_code','phone_number']));"
 
 echo "\n✅ Deployment completed successfully"

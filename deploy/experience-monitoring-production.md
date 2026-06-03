@@ -1,8 +1,86 @@
 # Experience Monitoring (VAPT) — Production
 
-Browser-based login and dashboard checks run via **Playwright (Chromium only)** in the **Horizon** queue worker. The **scheduler** enqueues due tests every minute.
+Browser-based login and dashboard checks run via **Playwright (Chromium only)** in **Horizon**.
 
 Always work from **`/var/www/vendorpulse`** — not `/var/www/exportdoc`.
+
+---
+
+## Production deploy path (Contabo)
+
+This server uses **host Horizon**, not Docker workers:
+
+```bash
+cd /var/www/vendorpulse
+FORCE_RESET=1 ./deploy/release.sh deploy
+```
+
+`deploy/release.sh` → `deploy/deploy_host.sh`, which:
+
+- Starts **postgres/redis** in Docker only
+- Runs **Laravel + Horizon + scheduler on the host**
+- Installs **Playwright Chromium** on the host
+- Deploys **Next.js** via pm2
+
+It does **not** start Docker `horizon` / `app`. If those containers are still running, they can conflict with host Horizon.
+
+After deploy, verify VAPT:
+
+```bash
+cd /var/www/vendorpulse
+./deploy/verify_vapt.sh
+```
+
+---
+
+## If VAPT broke after `release.sh deploy`
+
+### 1. Wrong Node path cached in config (most common)
+
+Production `.env` must **not** contain a dev-machine nvm path, e.g.:
+
+```env
+EXPERIENCE_MONITORING_RUNNER_COMMAND=/home/veraval/.nvm/versions/node/v24.15.0/bin/node
+```
+
+`php artisan optimize` caches that path. Horizon then cannot run Playwright.
+
+**Fix on server:**
+
+```bash
+cd /var/www/vendorpulse
+# Use your server's node path:
+which node
+# Edit .env — set or replace:
+# EXPERIENCE_MONITORING_RUNNER_COMMAND=/usr/bin/node
+# PLAYWRIGHT_BROWSERS_PATH=/var/www/vendorpulse/.playwright-browsers
+
+npm run experience-monitoring:install
+php artisan config:clear
+php artisan optimize
+./deploy/workers_up.sh
+./deploy/verify_vapt.sh
+```
+
+### 2. Docker Horizon still running
+
+```bash
+cd /var/www/vendorpulse
+docker compose stop horizon scheduler app
+./deploy/workers_up.sh
+```
+
+### 3. Failed jobs — read the error
+
+```bash
+cd /var/www/vendorpulse
+php artisan queue:failed
+tail -n 80 storage/logs/horizon-host.log
+```
+
+### 4. Create test fails — organization not selected
+
+Global admin must pick **one organization** in the dashboard (not “All organizations”) before creating a VAPT test.
 
 ---
 

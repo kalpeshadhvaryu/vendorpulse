@@ -19,7 +19,7 @@ class PlaywrightRunnerService
             $command,
             $script,
             json_encode($input->toArray(), JSON_THROW_ON_ERROR),
-        ], base_path(), null, null, max(5, (int) config('experience-monitoring.runner_timeout_seconds', 120)));
+        ], base_path(), $this->runnerEnvironment(), null, max(5, (int) config('experience-monitoring.runner_timeout_seconds', 120)));
 
         $process->run();
 
@@ -43,6 +43,21 @@ class PlaywrightRunnerService
         $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         return PlaywrightRunResult::fromArray($payload);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function runnerEnvironment(): array
+    {
+        $env = [];
+        $browsersPath = trim((string) config('experience-monitoring.playwright_browsers_path', ''));
+
+        if ($browsersPath !== '') {
+            $env['PLAYWRIGHT_BROWSERS_PATH'] = $browsersPath;
+        }
+
+        return $env;
     }
 
     private function resolveRunnerCommand(string $configuredCommand): string
