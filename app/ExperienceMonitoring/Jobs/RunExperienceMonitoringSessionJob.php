@@ -62,6 +62,13 @@ class RunExperienceMonitoringSessionJob implements ShouldQueue
         if ($exception !== null) {
             report($exception);
         }
+
+        app(ExperienceMonitoringExecutionService::class)->markExecutionFailed(
+            null,
+            $this->testId,
+            $this->sessionIndex,
+            $exception?->getMessage() ?? 'Experience monitoring job failed after retries.',
+        );
     }
 
     /**

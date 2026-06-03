@@ -119,30 +119,39 @@ class ExperienceMonitoringExecutionService
 
             $this->alerts->dispatchAlerts($test, $run->fresh());
         } catch (Throwable $e) {
-            Log::error('Experience monitoring execution failed.', [
-                'test_id' => $testId,
-                'session_index' => $sessionIndex,
-                'error' => $e->getMessage(),
-            ]);
-
-            if ($test instanceof ExperienceMonitoringTest) {
-                $this->repository->createRun([
-                    'experience_monitoring_test_id' => $test->id,
-                    'organization_id' => $test->organization_id,
-                    'session_index' => $sessionIndex,
-                    'status' => ExperienceMonitoringRunStatus::Error->value,
-                    'error_message' => $e->getMessage(),
-                    'started_at' => now(),
-                    'finished_at' => now(),
-                ]);
-
-                $test->last_status = ExperienceMonitoringRunStatus::Error->value;
-                $test->last_error = $e->getMessage();
-                $test->last_run_at = now();
-                $test->next_run_at = now()->addSeconds(max(60, (int) $test->interval_seconds));
-                $test->save();
-            }
+            $this->markExecutionFailed($test, $testId, $sessionIndex, $e->getMessage());
         }
+    }
+
+    public function markExecutionFailed(?ExperienceMonitoringTest $test, string $testId, int $sessionIndex, string $message): void
+    {
+        Log::error('Experience monitoring execution failed.', [
+            'test_id' => $testId,
+            'session_index' => $sessionIndex,
+            'error' => $message,
+        ]);
+
+        $test ??= $this->repository->findTest($testId);
+
+        if (! $test instanceof ExperienceMonitoringTest) {
+            return;
+        }
+
+        $this->repository->createRun([
+            'experience_monitoring_test_id' => $test->id,
+            'organization_id' => $test->organization_id,
+            'session_index' => $sessionIndex,
+            'status' => ExperienceMonitoringRunStatus::Error->value,
+            'error_message' => $message,
+            'started_at' => now(),
+            'finished_at' => now(),
+        ]);
+
+        $test->last_status = ExperienceMonitoringRunStatus::Error->value;
+        $test->last_error = $message;
+        $test->last_run_at = now();
+        $test->next_run_at = now()->addSeconds(max(60, (int) $test->interval_seconds));
+        $test->save();
     }
 
     private function resolveEffectiveStatus(string $status, ?int $dashboardLoadDurationMs, int $consoleErrorCount): ExperienceMonitoringRunStatus

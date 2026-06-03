@@ -58,18 +58,30 @@ if command -v docker >/dev/null 2>&1; then
     if "${COMPOSE[@]}" ps -q horizon 2>/dev/null | grep -q .; then
         HSTATUS="$("${COMPOSE[@]}" ps horizon 2>/dev/null | tail -n +2 || true)"
         if echo "$HSTATUS" | grep -qi running; then
-            echo "FAIL Docker horizon is running (conflicts with host Horizon on this deploy path)"
-            fail=1
+            echo "INFO Docker horizon is running (ensure it listens on experience-monitoring queue)"
         else
-            echo "OK   Docker horizon not running"
+            echo "OK   Docker horizon container stopped"
         fi
-    else
-        echo "OK   Docker horizon container absent/stopped"
     fi
 fi
 
 echo ""
 php artisan horizon:status 2>/dev/null || true
+
+php artisan tinker --execute="
+\$queues = config('horizon.defaults.supervisor-1.queue', []);
+\$vapt = config('horizon.defaults.supervisor-experience-monitoring.queue', []);
+echo 'horizon supervisor-1 queues: '.implode(', ', (array) \$queues).PHP_EOL;
+echo 'horizon VAPT supervisor queues: '.implode(', ', (array) \$vapt).PHP_EOL;
+" 2>/dev/null || true
+
+if pgrep -af "horizon:work" 2>/dev/null | grep -q "experience-monitoring"; then
+    echo "OK   Horizon worker listening on experience-monitoring"
+else
+    echo "FAIL No Horizon worker on experience-monitoring queue (VAPT jobs will stay pending)"
+    fail=1
+fi
+
 echo ""
 php artisan queue:failed 2>/dev/null | head -n 20 || true
 echo ""

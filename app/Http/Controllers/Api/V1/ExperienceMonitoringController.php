@@ -77,6 +77,10 @@ class ExperienceMonitoringController extends BaseApiController
 
     public function trigger(ExperienceMonitoringTest $experienceMonitoringTest): JsonResponse
     {
+        if (! $experienceMonitoringTest->enabled) {
+            return ApiResponse::error('Experience monitoring test is disabled. Enable it before running.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         RunExperienceMonitoringTestJob::dispatch($experienceMonitoringTest->id)
             ->onQueue((string) config('experience-monitoring.queue', 'experience-monitoring'));
 

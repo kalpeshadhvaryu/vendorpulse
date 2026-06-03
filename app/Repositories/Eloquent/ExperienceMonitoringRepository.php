@@ -57,7 +57,7 @@ class ExperienceMonitoringRepository implements ExperienceMonitoringRepositoryIn
 
     public function findTest(string $id): ?ExperienceMonitoringTest
     {
-        return ExperienceMonitoringTest::query()->whereKey($id)->first();
+        return ExperienceMonitoringTest::query()->withoutGlobalScopes()->whereKey($id)->first();
     }
 
     public function paginateRuns(ExperienceMonitoringTest $test, int $perPage = 20, array $filters = []): LengthAwarePaginator

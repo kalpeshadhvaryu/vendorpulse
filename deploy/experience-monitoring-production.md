@@ -82,6 +82,56 @@ tail -n 80 storage/logs/horizon-host.log
 
 Global admin must pick **one organization** in the dashboard (not “All organizations”) before creating a VAPT test.
 
+### 5. Status stuck on **pending** after clicking Play
+
+**Pending** means `last_status` is empty — the test has **never finished a run** (or the queue job never completed).
+
+Play only **queues** a job. Horizon must process the `experience-monitoring` queue within ~1–3 minutes.
+
+**Diagnose on server:**
+
+```bash
+cd /var/www/vendorpulse
+
+# Is host Horizon running?
+php artisan horizon:status
+pgrep -af "artisan horizon"
+
+# Failed jobs (Playwright / node errors show here)
+php artisan queue:failed
+
+# Horizon log
+tail -n 80 storage/logs/horizon-host.log
+
+# Test row in DB
+php artisan tinker --execute="
+\$t = \\App\\Models\\ExperienceMonitoringTest::withoutGlobalScopes()->where('name', 'LIKE', '%exportdoc%')->first();
+if (\$t) {
+  echo \$t->name.' enabled='.(\$t->enabled?'yes':'no').' last_status='.(\$t->last_status ?? 'pending').PHP_EOL;
+  echo 'last_error='.(\$t->last_error ?? 'null').PHP_EOL;
+  echo 'last_run_at='.(\$t->last_run_at ?? 'never').PHP_EOL;
+}
+"
+
+# Re-queue manually
+php artisan tinker --execute="
+\$id = \\App\\Models\\ExperienceMonitoringTest::withoutGlobalScopes()->value('id');
+if (\$id) { \\App\\ExperienceMonitoring\\Jobs\\RunExperienceMonitoringTestJob::dispatch(\$id); echo \"queued \$id\"; }
+"
+```
+
+**Common causes:**
+
+| Cause | Fix |
+|-------|-----|
+| Host Horizon not running | `./deploy/workers_up.sh` |
+| Docker Horizon still running (broken Playwright) | `docker compose stop horizon scheduler app` |
+| Test **disabled** | Edit test → enable |
+| Jobs in `queue:failed` | Read exception, fix Node/Playwright, `php artisan queue:retry all` |
+| Stale overlap lock (re-triggered many times) | `php artisan horizon:terminate` then `./deploy/workers_up.sh` |
+
+After Play succeeds, status should change from **pending** to `ok`, `js_error`, `error`, etc. within about 60 seconds.
+
 ---
 
 ## Quick deploy (minimal)
