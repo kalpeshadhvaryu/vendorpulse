@@ -7,9 +7,18 @@ cd "$ROOT_DIR"
 
 echo "== Workers: ensure Horizon + scheduler =="
 
-mkdir -p storage/logs
+mkdir -p storage/logs storage/app/private/experience-monitoring
 
 HORIZON_USER="${HORIZON_USER:-www-data}"
+PLAYWRIGHT_DIR="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT_DIR/.playwright-browsers}"
+
+if id "$HORIZON_USER" &>/dev/null; then
+    if [[ -d "$PLAYWRIGHT_DIR" ]]; then
+        chown -R "$HORIZON_USER:$HORIZON_USER" "$PLAYWRIGHT_DIR" 2>/dev/null || true
+    fi
+    chown -R "$HORIZON_USER:$HORIZON_USER" storage/app/private/experience-monitoring 2>/dev/null || true
+fi
+
 run_horizon() {
     if [[ "$(id -u)" -eq 0 ]] && id "$HORIZON_USER" &>/dev/null; then
         sudo -u "$HORIZON_USER" nohup php artisan horizon > "$ROOT_DIR/storage/logs/horizon-host.log" 2>&1 &

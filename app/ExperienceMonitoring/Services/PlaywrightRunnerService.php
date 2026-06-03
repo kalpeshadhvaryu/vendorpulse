@@ -23,6 +23,18 @@ class PlaywrightRunnerService
 
         $process->run();
 
+        $json = trim($process->getOutput());
+        if ($json !== '') {
+            try {
+                /** @var array<string, mixed> $payload */
+                $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+                return PlaywrightRunResult::fromArray($payload);
+            } catch (\JsonException) {
+                // Fall through to process failure handling below.
+            }
+        }
+
         if (! $process->isSuccessful()) {
             $stderr = trim($process->getErrorOutput());
             $stdout = trim($process->getOutput());
@@ -34,15 +46,7 @@ class PlaywrightRunnerService
             throw new RuntimeException('Playwright execution failed: '.($stderr !== '' ? $stderr : $stdout).$hint);
         }
 
-        $json = trim($process->getOutput());
-        if ($json === '') {
-            throw new RuntimeException('Playwright execution returned empty output.');
-        }
-
-        /** @var array<string, mixed> $payload */
-        $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-
-        return PlaywrightRunResult::fromArray($payload);
+        throw new RuntimeException('Playwright execution returned empty output.');
     }
 
     /**

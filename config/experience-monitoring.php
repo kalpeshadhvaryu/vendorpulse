@@ -11,6 +11,8 @@ return [
 
     'runner_timeout_seconds' => (int) env('EXPERIENCE_MONITORING_RUNNER_TIMEOUT_SECONDS', 120),
 
+    'run_job_timeout_seconds' => (int) env('EXPERIENCE_MONITORING_RUN_JOB_TIMEOUT_SECONDS', 300),
+
     'max_concurrent_sessions' => (int) env('EXPERIENCE_MONITORING_MAX_CONCURRENT_SESSIONS', 5),
 
     'slow_dashboard_threshold_ms' => (int) env('EXPERIENCE_MONITORING_SLOW_DASHBOARD_THRESHOLD_MS', 8000),

@@ -48,8 +48,15 @@ tail -n 80 storage/logs/horizon-host.log
    find storage/app/private/experience-monitoring -type d -exec chmod 755 {} \;
    find storage/app/private/experience-monitoring -type f -exec chmod 644 {} \;
    chown -R www-data:www-data storage/app/private/experience-monitoring
+   chown -R www-data:www-data .playwright-browsers
    Restart Horizon as www-data: ./deploy/workers_up.sh
    Re-test curl screenshot endpoint (expect HTTP 200)
+
+6) Status stuck on error — read last_error on list or:
+   RUN_SYNC=1 ./deploy/diagnose_vapt.sh myvogue
+   tail -n 50 storage/logs/horizon-host.log
+   sudo -u www-data node scripts/experience-monitoring/runner.mjs '{}'  # quick node check
+   After deploy: runner no longer uses networkidle (WHMCS fix); job timeout 300s
 
 ---
 

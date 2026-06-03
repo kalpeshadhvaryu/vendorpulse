@@ -8,9 +8,45 @@ function nowIso() {
 
 function toStatusFromError(err) {
   const msg = String(err?.message ?? err ?? "").toLowerCase();
-  if (msg.includes("timeout")) return "timeout";
+  if (msg.includes("timeout") || msg.includes("timed out")) return "timeout";
   if (msg.includes("login")) return "failed_login";
   return "error";
+}
+
+async function waitForPageSettled(page, timeoutMs) {
+  await page.waitForLoadState("domcontentloaded", { timeout: timeoutMs });
+  try {
+    await page.waitForLoadState("load", { timeout: Math.min(15000, timeoutMs) });
+  } catch {
+    // WHMCS and similar admin panels often keep background requests open.
+  }
+  await page.waitForTimeout(1500);
+}
+
+async function isAlreadyAuthenticated(page) {
+  return page.evaluate(() => {
+    const path = window.location.pathname.toLowerCase();
+    const title = document.title.toLowerCase();
+    const hasPasswordField = Boolean(document.querySelector('input[type="password"]'));
+
+    if (hasPasswordField) {
+      return false;
+    }
+
+    if (path.includes("dashboard") || title.includes("dashboard")) {
+      return true;
+    }
+
+    if (path.includes("/admin/") && !path.includes("login")) {
+      return true;
+    }
+
+    if (path.includes("supportticket")) {
+      return true;
+    }
+
+    return false;
+  });
 }
 
 async function findFirstFrameWithSelector(page, selectors) {
@@ -142,11 +178,12 @@ async function run() {
     });
 
     const usernameSelectors = [
+      '#inputEmail',
+      'input[name="username"]',
       '#Email',
       'input[id="Email"]',
       'input[type="email"]',
       'input[name="email"]',
-      'input[name="username"]',
       'input[id*="email"]',
       'input[id*="user"]',
       'input[autocomplete="username"]',
@@ -154,6 +191,7 @@ async function run() {
     ];
 
     const passwordSelectors = [
+      '#inputPassword',
       '#Password',
       'input[id="Password"]',
       'input[type="password"]',
@@ -178,11 +216,7 @@ async function run() {
 
     let loginDurationMs = null;
     if (!formReady) {
-      const alreadyAuthenticated = await page.evaluate(() => {
-        const path = window.location.pathname.toLowerCase();
-        const title = document.title.toLowerCase();
-        return path.includes("dashboard") || title.includes("dashboard");
-      });
+      const alreadyAuthenticated = await isAlreadyAuthenticated(page);
 
       if (!alreadyAuthenticated) {
         throw new Error("Unable to locate username/password fields on login page.");
@@ -216,16 +250,14 @@ async function run() {
       for (const selector of submitSelectors) {
         const handle = await loginFrame.$(selector);
         if (!handle) continue;
-        await Promise.allSettled([
-          page.waitForLoadState("networkidle", { timeout: timeoutMs }),
-          loginFrame.click(selector),
-        ]);
+        await Promise.allSettled([loginFrame.click(selector), waitForPageSettled(page, timeoutMs)]);
         submitted = true;
         break;
       }
 
       if (!submitted) {
         await page.keyboard.press("Enter");
+        await waitForPageSettled(page, timeoutMs);
       }
 
       loginDurationMs = Date.now() - loginStart;
@@ -236,10 +268,11 @@ async function run() {
     if (String(input.dashboard_url ?? "").trim() !== "") {
       dashboardResponse = await page.goto(String(input.dashboard_url), {
         timeout: timeoutMs,
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
       });
+      await waitForPageSettled(page, timeoutMs);
     } else {
-      await page.waitForLoadState("networkidle", { timeout: timeoutMs });
+      await waitForPageSettled(page, timeoutMs);
     }
     const dashboardLoadDurationMs = Date.now() - dashboardStart;
 
@@ -294,4 +327,25 @@ async function run() {
   }
 }
 
-run();
+run().catch((err) => {
+  const payload = {
+    status: toStatusFromError(err),
+    login_duration_ms: null,
+    dashboard_load_duration_ms: null,
+    total_duration_ms: null,
+    http_status: null,
+    http_status_codes: [],
+    response_times: [],
+    console_errors: [],
+    failed_requests: [],
+    browser_logs: [],
+    error_message: String(err?.message ?? err ?? "Playwright run failed"),
+    screenshot_base64: null,
+    screenshot_mime: "image/png",
+    started_at: nowIso(),
+    finished_at: nowIso(),
+  };
+
+  process.stdout.write(JSON.stringify(payload));
+  process.exit(0);
+});

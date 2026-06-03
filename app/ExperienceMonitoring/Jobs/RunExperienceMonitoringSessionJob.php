@@ -15,7 +15,7 @@ class RunExperienceMonitoringSessionJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 180;
+    public int $timeout;
 
     public int $tries;
 
@@ -23,6 +23,7 @@ class RunExperienceMonitoringSessionJob implements ShouldQueue
         public string $testId,
         public int $sessionIndex,
     ) {
+        $this->timeout = max(60, (int) config('experience-monitoring.run_job_timeout_seconds', 300));
         $this->tries = max(1, (int) config('experience-monitoring.run_job_tries', 3));
         $this->onQueue((string) config('experience-monitoring.queue', 'experience-monitoring'));
     }
@@ -52,8 +53,8 @@ class RunExperienceMonitoringSessionJob implements ShouldQueue
     {
         return [
             (new WithoutOverlapping('experience-monitoring-test-session:'.$this->testId.':'.$this->sessionIndex))
-                ->releaseAfter(180)
-                ->expireAfter(360),
+                ->releaseAfter(max(180, $this->timeout))
+                ->expireAfter(max(360, $this->timeout * 2)),
         ];
     }
 

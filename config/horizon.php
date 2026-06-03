@@ -100,7 +100,7 @@ return [
         'redis:default' => 60,
         'redis:email-monitoring' => 120,
         'redis:site-monitoring' => 120,
-        'redis:experience-monitoring' => 120,
+        'redis:experience-monitoring' => 360,
     ],
 
     /*
@@ -222,7 +222,7 @@ return [
             'maxJobs' => 0,
             'memory' => 256,
             'tries' => 3,
-            'timeout' => 180,
+            'timeout' => 330,
             'nice' => 0,
         ],
     ],
