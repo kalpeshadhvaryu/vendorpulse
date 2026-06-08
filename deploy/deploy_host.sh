@@ -6,27 +6,16 @@ FRONTEND_DIR="$ROOT_DIR/web_dashboard"
 
 BACKEND_BRANCH="${BACKEND_BRANCH:-kalpesh}"
 FRONTEND_BRANCH="${FRONTEND_BRANCH:-kalpesh}"
-PM2_APP_NAME="${PM2_APP_NAME:-vendorpulse-frontend}"
 FORCE_RESET="${FORCE_RESET:-0}"
-MAINTENANCE_MODE="${MAINTENANCE_MODE:-1}"
-START_HOST_WORKERS="${START_HOST_WORKERS:-1}"
 
+# Force Docker Compose configuration using your manifest files
 COMPOSE=(docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.bind.yml")
-
-down_active=0
 
 cleanup() {
     local rc=$?
-
-    if [[ $down_active -eq 1 ]]; then
-        cd "$ROOT_DIR"
-        php artisan up || true
-    fi
-
     if [[ $rc -ne 0 ]]; then
         echo "❌ Deployment failed (exit $rc)"
     fi
-
     exit $rc
 }
 
@@ -45,7 +34,7 @@ sync_repo() {
     local branch="$2"
     local label="$3"
 
-    echo "\n== Syncing $label ($branch) =="
+    echo -e "\n== Syncing $label ($branch) =="
     cd "$repo_dir"
 
     if [[ "$FORCE_RESET" != "1" ]] && [[ -n "$(git status --porcelain)" ]]; then
@@ -62,71 +51,6 @@ sync_repo() {
         git checkout "$branch"
         git pull --ff-only origin "$branch"
     fi
-}
-
-set_env_key() {
-    local key="$1"
-    local value="$2"
-
-    if grep -qE "^${key}=" .env; then
-        sed -i.bak "s|^${key}=.*|${key}=${value}|" .env
-    else
-        echo "${key}=${value}" >> .env
-    fi
-}
-
-ensure_experience_monitoring() {
-    echo "\n== Experience monitoring (Playwright / VAPT prerequisites) =="
-    cd "$ROOT_DIR"
-
-    local node_bin
-    node_bin="$(command -v node || true)"
-    if [[ -z "$node_bin" ]]; then
-        echo "❌ Node.js not found on PATH (required for VAPT Playwright runner)"
-        exit 1
-    fi
-
-    local browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT_DIR/.playwright-browsers}"
-    mkdir -p "$browsers_path"
-    export PLAYWRIGHT_BROWSERS_PATH="$browsers_path"
-
-    if [[ -f .env ]]; then
-        local configured_runner
-        configured_runner="$(grep -E '^EXPERIENCE_MONITORING_RUNNER_COMMAND=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || true)"
-        if [[ -n "$configured_runner" && ! -x "$configured_runner" ]]; then
-            echo "⚠️ Invalid EXPERIENCE_MONITORING_RUNNER_COMMAND ($configured_runner) — updating to $node_bin"
-            set_env_key "EXPERIENCE_MONITORING_RUNNER_COMMAND" "$node_bin"
-        elif [[ -z "$configured_runner" ]]; then
-            set_env_key "EXPERIENCE_MONITORING_RUNNER_COMMAND" "$node_bin"
-        fi
-
-        local configured_browsers
-        configured_browsers="$(grep -E '^PLAYWRIGHT_BROWSERS_PATH=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs || true)"
-        if [[ -z "$configured_browsers" ]]; then
-            set_env_key "PLAYWRIGHT_BROWSERS_PATH" "$browsers_path"
-        fi
-    fi
-
-    if [[ -f package-lock.json ]]; then
-        npm ci --omit=dev --no-audit --no-fund
-    else
-        npm install --omit=dev --no-audit --no-fund
-    fi
-
-    npx playwright install --with-deps chromium
-    npm run experience-monitoring:verify
-
-    echo "✅ VAPT ready: node=$node_bin browsers=$browsers_path"
-}
-
-stop_docker_queue_workers() {
-    echo "\n== Stop Docker app/horizon/scheduler (this server uses host Horizon) =="
-    "${COMPOSE[@]}" stop horizon scheduler app 2>/dev/null || true
-}
-
-start_host_workers() {
-    echo "\n== Start host Horizon + scheduler =="
-    "$ROOT_DIR/deploy/workers_up.sh"
 }
 
 wait_for_compose_service() {
@@ -163,66 +87,41 @@ wait_for_compose_service() {
     done
 }
 
-echo "🚀 Starting host-based deployment"
+echo "🚀 Starting Container-Native Deployment Process"
 
 require_cmd git
-require_cmd php
-require_cmd npm
-require_cmd pm2
 require_cmd docker
 
+# Sync repository tracks natively
 sync_repo "$ROOT_DIR" "$BACKEND_BRANCH" "backend"
 sync_repo "$FRONTEND_DIR" "$FRONTEND_BRANCH" "frontend"
 
-echo "\n== Ensuring infra containers (postgres/redis) =="
-cd "$ROOT_DIR"
-"${COMPOSE[@]}" up -d postgres redis
+echo -e "\n== Step 1: Stopping current runtime stack layers =="
+"${COMPOSE[@]}" down
+
+echo -e "\n== Step 2: Triggering compilation and bringing up the entire environment stack =="
+"${COMPOSE[@]}" up -d --build --force-recreate
+
+echo -e "\n== Step 3: Ensuring Core Infrastructure services are completely initialized =="
 wait_for_compose_service postgres 90
 wait_for_compose_service redis 60
+wait_for_compose_service app 60
 
-echo "\n== Deploying Laravel (host runtime) =="
-if [[ "$MAINTENANCE_MODE" == "1" ]]; then
-    php artisan down --retry=60 || true
-    down_active=1
-fi
+echo -e "\n== Step 4: Syncing permissions and clearing framework caches inside the container =="
+docker exec -t vendorpulse-app-1 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
+docker exec -t vendorpulse-app-1 chmod -R ug+rwX storage bootstrap/cache
 
-mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
-chmod -R ug+rwX storage bootstrap/cache
-chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+# Clear internal caches inside the container so it doesn't leak to the host machine
+docker exec -t vendorpulse-app-1 rm -f bootstrap/cache/config.php
+docker exec -t vendorpulse-app-1 php artisan optimize:clear
 
-ensure_experience_monitoring
+echo -e "\n== Step 5: Running database schema migrations inside the Docker isolated network =="
+docker exec -t vendorpulse-app-1 php artisan migrate --force
 
-php artisan optimize:clear
-php artisan migrate --force
-php artisan optimize
+echo -e "\n== Step 6: Forcing runtime configuration and optimization caching =="
+docker exec -t vendorpulse-app-1 php artisan optimize
 
-if [[ "$START_HOST_WORKERS" == "1" ]]; then
-    stop_docker_queue_workers
-    start_host_workers
-fi
+echo -e "\n== Step 7: Injecting and synchronizing your global administrator profile user record =="
+docker exec -t vendorpulse-app-1 php artisan tinker --execute="\$user = \App\Models\User::updateOrCreate(['email' => 'admin@vendorpulse.com'], ['name' => 'Global Admin', 'password' => bcrypt('Admin@123456')]);"
 
-if [[ $down_active -eq 1 ]]; then
-    php artisan up || true
-    down_active=0
-fi
-
-echo "\n== Deploying Next.js (host runtime) =="
-cd "$FRONTEND_DIR"
-if [[ -f package-lock.json ]]; then
-    npm ci --no-audit --no-fund
-else
-    npm install --no-audit --no-fund
-fi
-
-npm run build
-pm2 restart "$PM2_APP_NAME" || pm2 start npm --name "$PM2_APP_NAME" --cwd "$FRONTEND_DIR" -- start
-pm2 save || true
-
-echo "\n== Quick verification =="
-cd "$ROOT_DIR"
-php artisan horizon:status || true
-php artisan queue:failed || true
-bash "$ROOT_DIR/deploy/verify_vapt.sh" || true
-php artisan tinker --execute="dump(Illuminate\\Support\\Facades\\Schema::hasColumns('organizations', ['phone_country_code','phone_number']));"
-
-echo "\n✅ Deployment completed successfully"
+echo -e "\n✅ Deployment completed successfully inside Docker!"
