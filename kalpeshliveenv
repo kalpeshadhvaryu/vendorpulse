@@ -1,0 +1,84 @@
+APP_NAME=VendorPulse
+# 1. Swapped to production settings
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=base64:V2b1cwFk+p6r+7izrQOx/ZVq9Zay2SwWnr3PgMzCxBE=
+APP_URL=https://vendorpulse.veravalonline.com
+
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+APP_MAINTENANCE_DRIVER=file
+BCRYPT_ROUNDS=12
+
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+# 2. Translated for internal Docker Container Networking
+DB_CONNECTION=pgsql
+DB_HOST=postgres      # <-- Docker internal container network name
+DB_PORT=5432          # <-- Standard internal container port
+DB_DATABASE=vendorpulse
+DB_USERNAME=vendorpulse
+DB_PASSWORD=vendorpulse
+
+# 3. Restored your working local database session driver
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_PATH=/
+# 4. Locked down domain cookie compliance to prevent the login loop
+SESSION_DOMAIN=vendorpulse.veravalonline.com
+SESSION_SECURE_COOKIE=true
+
+BROADCAST_CONNECTION=log
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=database
+CACHE_STORE=file
+MEMCACHED_HOST=127.0.0.1
+
+# 5. Translated Redis for internal Docker Container Networking
+REDIS_CLIENT=phpredis
+REDIS_HOST=redis      # <-- Docker internal container network name
+REDIS_PORT=6379       # <-- Standard internal container port
+REDIS_PASSWORD=null
+
+MAIL_MAILER=log
+MAIL_SCHEME=null
+MAIL_HOST=127.0.0.1
+MAIL_PORT=2525
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
+
+VITE_APP_NAME="${APP_NAME}"
+
+# 6. Next.js Production API Routing and Handshake Tokens
+WEB_DASHBOARD_URL=https://vendorpulse.veravalonline.com
+NEXT_PUBLIC_API_URL=https://vendorpulse.veravalonline.com/api/v1
+NEXTAUTH_URL=https://vendorpulse.veravalonline.com
+NEXTAUTH_SECRET=V2b1cwFk+p6r+7izrQOx/ZVq9Zay2SwWnr3PgMzCxBE=
+
+# 7. Production Cross-Origin Header Safeguards
+CORS_ALLOWED_ORIGINS=https://vendorpulse.veravalonline.com
+SANCTUM_STATEFUL_DOMAINS=vendorpulse.veravalonline.com
+
+SITE_MONITORING_QUEUE=site-monitoring
+SITE_MONITORING_DOMAIN_PROVIDER=rdap
+SITE_MONITORING_UPTIME_HTTP_RETRIES=3
+SITE_MONITORING_RUN_JOB_TRIES=3
+SITE_MONITORING_RUN_JOB_BACKOFF=15,60,180
+SITE_MONITORING_DISPATCH_JOB_TRIES=3
+SITE_MONITORING_DISPATCH_JOB_BACKOFF=30,120
+SITE_MONITORING_HTTP_LOG_BODY_MAX_BYTES=4096
+
+EXPERIENCE_MONITORING_RUNNER_COMMAND=/usr/local/bin/nodels
