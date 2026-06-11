@@ -154,6 +154,10 @@ cmd_deploy() {
 
     stop_host_workers
 
+    # Force-remove frontend image so Next.js always rebuilds with latest code and env vars.
+    echo "-- Removing cached frontend image --"
+    docker rmi vendorpulse-frontend --force 2>/dev/null || true
+
     # Bring up / rebuild
     echo "-- Rebuilding and restarting containers --"
     "${COMPOSE[@]}" up -d --build --force-recreate

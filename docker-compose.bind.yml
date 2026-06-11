@@ -24,3 +24,12 @@ services:
     volumes:
       - .:/var/www/html
       - ./.env.docker:/var/www/html/.env:ro
+
+  # Pass production env vars as build args so Next.js bakes them in at build time.
+  # These are read from the host .env file (or shell env) by docker compose.
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://vendorpulse.veravalonline.com/api/v1}
+        NEXTAUTH_URL: ${NEXTAUTH_URL:-https://vendorpulse.veravalonline.com}
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
