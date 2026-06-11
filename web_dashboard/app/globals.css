@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/* next-themes uses `data-theme="dark"|"light"` on <html> (default). Do not use `class` for theme — React replaces <html className> and strips theme classes. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Non-inline @theme: utilities like `bg-background` emit `var(--color-background)` so `[data-theme="dark"]` overrides work. `@theme inline` would bake in hex and break manual theme toggling. */
+@theme {
+  --color-background: #fafafa;
+  --color-foreground: #09090b;
+  --color-card: #ffffff;
+  --color-card-foreground: #09090b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #09090b;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #6366f1;
+  --color-primary: #4f46e5;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #18181b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+}
+
+[data-theme="dark"] {
+  --color-background: #09090b;
+  --color-foreground: #fafafa;
+  --color-card: #0c0c0f;
+  --color-card-foreground: #fafafa;
+  --color-popover: #0c0c0f;
+  --color-popover-foreground: #fafafa;
+  --color-muted: #18181b;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #18181b;
+  --color-accent-foreground: #fafafa;
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: #818cf8;
+  --color-primary: #818cf8;
+  --color-primary-foreground: #18181b;
+  --color-secondary: #27272a;
+  --color-secondary-foreground: #fafafa;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #18181b;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-background, #fafafa);
+    color: var(--color-foreground, #09090b);
+  }
+
+  * {
+    border-color: var(--color-border, #e4e4e7);
+  }
+
+  /* Avoid @apply here: if a token fails to resolve, the whole rule can be dropped and you get a blank white screen. */
+  body {
+    background-color: var(--color-background, #fafafa);
+    color: var(--color-foreground, #09090b);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  @keyframes radar-glow {
+    0%,
+    100% {
+      transform: translateX(-50%) scale(0.98);
+      opacity: 0.42;
+    }
+
+    50% {
+      transform: translateX(-50%) scale(1.06);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes radar-sweep {
+    0% {
+      transform: translateX(-140%) rotate(12deg);
+    }
+
+    100% {
+      transform: translateX(140%) rotate(12deg);
+    }
+  }
+
+  @keyframes flow {
+    0%,
+    100% {
+      transform: translateX(-18%);
+      opacity: 0.65;
+    }
+
+    50% {
+      transform: translateX(18%);
+      opacity: 1;
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px) scale(1);
+    }
+
+    50% {
+      transform: translateY(-10px) scale(1.03);
+    }
+  }
+
+  @keyframes spin-slow {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes bar-rise {
+    0% {
+      transform: scaleY(0.25);
+      opacity: 0.35;
+    }
+
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+
+    100% {
+      transform: scaleY(0.35);
+      opacity: 0.55;
+    }
+  }
+
+  .animate-radar-glow {
+    animation: radar-glow 8s ease-in-out infinite;
+  }
+
+  .animate-radar-sweep {
+    animation: radar-sweep 4s linear infinite;
+  }
+
+  .animate-flow {
+    animation: flow 2.8s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 7s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 16s linear infinite;
+  }
+
+  .animate-bar-rise {
+    transform-origin: bottom;
+    animation: bar-rise 2.6s ease-in-out infinite;
+  }
+}
