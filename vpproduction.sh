@@ -152,6 +152,10 @@ cmd_deploy() {
     [[ -f "$ROOT_DIR/.env.docker" ]] || \
         err ".env.docker missing. Run 'bash vpproduction.sh setup' first."
 
+    # Keep Docker runtime-safe values even if .env.docker drifted.
+    ensure_env_kv "$ROOT_DIR/.env.docker" "EXPERIENCE_MONITORING_RUNNER_COMMAND" "node"
+    ensure_env_kv "$ROOT_DIR/.env.docker" "PLAYWRIGHT_BROWSERS_PATH" "/var/www/html/.playwright-browsers"
+
     stop_host_workers
 
     # Force-remove frontend image so Next.js always rebuilds with latest code and env vars.
