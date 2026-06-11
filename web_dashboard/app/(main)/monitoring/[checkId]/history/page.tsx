@@ -64,8 +64,9 @@ export default function MonitoringCheckHistoryPage() {
     if (status) p.status = status;
     if (search) p.search = search;
     if (downtimeOnly) p.downtime_only = "1";
+    if (changesOnly) p.changes_only = "1";
     return p;
-  }, [fromAt, toAt, status, search, downtimeOnly, page]);
+  }, [fromAt, toAt, status, search, downtimeOnly, changesOnly, page]);
 
   const summaryParams = useMemo(() => {
     const p: Record<string, string> = {};
@@ -111,31 +112,28 @@ export default function MonitoringCheckHistoryPage() {
   const lastPage = meta?.last_page ?? 1;
   const visibleRows = useMemo(() => {
     const rows = logsQuery.data?.items ?? [];
-    if (!changesOnly || rows.length === 0) {
+    if (!changesOnly) {
       return rows;
     }
 
-    // Compare each row with the previous probe in this page window and keep only transitions.
-    const changedIds = new Set<string>();
-    let previousProbe: (typeof rows)[number] | null = null;
+    const collapsed: typeof rows = [];
+    let previous: "ok" | "failed" | null = null;
 
-    for (let i = rows.length - 1; i >= 0; i -= 1) {
-      const current = rows[i];
-      if (!previousProbe) {
-        changedIds.add(current.id);
-      } else {
-        const statusChanged = String(current.status).toLowerCase() !== String(previousProbe.status).toLowerCase();
-        const httpChanged = (current.http_status ?? null) !== (previousProbe.http_status ?? null);
-        const messageChanged = String(current.message ?? "") !== String(previousProbe.message ?? "");
-
-        if (statusChanged || httpChanged || messageChanged) {
-          changedIds.add(current.id);
-        }
+    for (const row of rows) {
+      const status = String(row.status).toLowerCase();
+      if (status !== "ok" && status !== "failed") {
+        continue;
       }
-      previousProbe = current;
+
+      if (previous === status) {
+        continue;
+      }
+
+      collapsed.push(row);
+      previous = status;
     }
 
-    return rows.filter((row) => changedIds.has(row.id));
+    return collapsed;
   }, [logsQuery.data?.items, changesOnly]);
 
   const hasVisibleLogIssues = (logsQuery.data?.items ?? []).some((row) =>
@@ -287,7 +285,7 @@ export default function MonitoringCheckHistoryPage() {
       </Card>
 
       <Tabs defaultValue="summary" className="w-full">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start gap-2">
           <TabsTrigger value="summary">
             Uptime Summary
           </TabsTrigger>
@@ -317,7 +315,7 @@ export default function MonitoringCheckHistoryPage() {
             <CardContent>
               {changesOnly ? (
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Showing changed rows only (current page window).
+                  Showing only pass/fail transition rows (ok/failed), with stable pagination.
                 </p>
               ) : null}
               {logsQuery.isLoading ? (
@@ -473,7 +471,7 @@ export default function MonitoringCheckHistoryPage() {
             <CardContent>
               {changesOnly ? (
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Showing changed rows only (current page window).
+                  Showing only pass/fail transition rows (ok/failed), with stable pagination.
                 </p>
               ) : null}
               {logsQuery.isLoading ? (

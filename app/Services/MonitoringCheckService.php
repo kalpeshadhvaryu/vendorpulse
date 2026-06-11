@@ -426,6 +426,15 @@ class MonitoringCheckService
     {
         $data['updated_by'] = $actor->id;
 
+        $refreshOnUpdateFields = ['endpoint', 'type', 'configuration', 'enabled', 'interval_seconds'];
+        foreach ($refreshOnUpdateFields as $field) {
+            if (array_key_exists($field, $data)) {
+                // Re-run soon after material changes so status reflects edits quickly.
+                $data['next_run_at'] = now();
+                break;
+            }
+        }
+
         return $this->monitoringChecks->update($monitoringCheck, $data);
     }
 

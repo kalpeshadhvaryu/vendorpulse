@@ -117,16 +117,12 @@ cmd_setup() {
         ok ".env.docker created with Docker-internal hostnames (postgres:5432, redis:6379)."
     fi
 
-    # 1b. Enforce log-reduction settings in both host and docker env files
-    ensure_env_kv "$ROOT_DIR/.env" "SITE_MONITORING_LOG_ONLY_CHANGES" "true"
-    ensure_env_kv "$ROOT_DIR/.env" "SITE_MONITORING_LOG_HEARTBEAT_SECONDS" "3600"
+    # 1b. Enforce monitoring runtime values in both host and docker env files
     ensure_env_kv "$ROOT_DIR/.env" "EXPERIENCE_MONITORING_RUNNER_COMMAND" "node"
     ensure_env_kv "$ROOT_DIR/.env" "PLAYWRIGHT_BROWSERS_PATH" "$ROOT_DIR/.playwright-browsers"
-    ensure_env_kv "$ROOT_DIR/.env.docker" "SITE_MONITORING_LOG_ONLY_CHANGES" "true"
-    ensure_env_kv "$ROOT_DIR/.env.docker" "SITE_MONITORING_LOG_HEARTBEAT_SECONDS" "3600"
     ensure_env_kv "$ROOT_DIR/.env.docker" "EXPERIENCE_MONITORING_RUNNER_COMMAND" "node"
     ensure_env_kv "$ROOT_DIR/.env.docker" "PLAYWRIGHT_BROWSERS_PATH" "/var/www/html/.playwright-browsers"
-    ok "Monitoring log retention flags enforced in .env and .env.docker."
+    ok "Monitoring runtime values enforced in .env and .env.docker."
 
     # 2. Verify .env.docker has correct values
     DB_HOST_DOCKER=$(grep "^DB_HOST=" "$ROOT_DIR/.env.docker" | cut -d= -f2)

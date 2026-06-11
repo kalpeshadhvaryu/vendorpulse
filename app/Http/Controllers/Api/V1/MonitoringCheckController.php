@@ -70,6 +70,9 @@ class MonitoringCheckController extends BaseApiController
         if (($validated['downtime_only'] ?? false) === true) {
             $filters['downtime_only'] = true;
         }
+        if (($validated['changes_only'] ?? false) === true) {
+            $filters['changes_only'] = true;
+        }
 
         return ApiResponse::fromResource(
             MonitoringLogResource::collection($this->monitoringChecks->paginateLogs($monitoringCheck, $perPage, $filters))

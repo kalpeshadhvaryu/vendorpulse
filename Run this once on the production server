@@ -16,25 +16,6 @@ For deployment (11th-06-2026): git pull origin kalpesh && bash vpproduction.sh d
 
 Note: If you update a secret in .env (e.g. change DB password), you must also update it in .env.docker, or just re-run the setup commands to recreate it.
 
-These 2 scripts where added when logs filter for change only
-# .env
-grep -q '^SITE_MONITORING_LOG_ONLY_CHANGES=' .env \
-  && sed -i 's/^SITE_MONITORING_LOG_ONLY_CHANGES=.*/SITE_MONITORING_LOG_ONLY_CHANGES=true/' .env \
-  || echo 'SITE_MONITORING_LOG_ONLY_CHANGES=true' >> .env
-
-grep -q '^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=' .env \
-  && sed -i 's/^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=.*/SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600/' .env \
-  || echo 'SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600' >> .env
-
-# .env.docker
-grep -q '^SITE_MONITORING_LOG_ONLY_CHANGES=' .env.docker \
-  && sed -i 's/^SITE_MONITORING_LOG_ONLY_CHANGES=.*/SITE_MONITORING_LOG_ONLY_CHANGES=true/' .env.docker \
-  || echo 'SITE_MONITORING_LOG_ONLY_CHANGES=true' >> .env.docker
-
-grep -q '^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=' .env.docker \
-  && sed -i 's/^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=.*/SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600/' .env.docker \
-  || echo 'SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600' >> .env.docker
-
 Then apply
   # local-host php artisan runtime
 php artisan optimize:clear
@@ -43,8 +24,8 @@ php artisan optimize:clear
 docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php artisan optimize:clear
 
 Quickly Verify: 
-php artisan tinker --execute='echo config("site-monitoring.log_only_changes")."|".config("site-monitoring.log_heartbeat_seconds");'
-docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php artisan tinker --execute='echo config("site-monitoring.log_only_changes")."|".config("site-monitoring.log_heartbeat_seconds");'
+php artisan tinker --execute='echo config("site-monitoring.queue");'
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php artisan tinker --execute='echo config("site-monitoring.queue");'
 
 
 Experience Monitoring must-have (after rebuild/new server):
@@ -111,7 +92,38 @@ cd /var/www/vendorpulse && bash vpproduction.sh deploy && bash vpproduction.sh v
 docker compose -f docker-compose.yml -f docker-compose.bind.yml build --no-cache frontend && \
 docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d frontend
 
+cd /var/www/vendorpulse
+docker compose -f docker-compose.yml -f docker-compose.bind.yml ps
+docker compose -f docker-compose.yml -f docker-compose.bind.yml logs --tail=80 frontend | grep -Ei 'error|nextauth|secret' || true
+
 
 Best Long-Term Improvement
 Move to one-repo deployment model (remove nested .git in production web_dashboard) so one push/pull/deploy updates everything and this confusion disappears.
 
+
+for next AUTH value
+On live server, set a strong real value for NEXTAUTH_SECRET in the environment file used by Docker runtime.
+In your setup, keep it in .env and ensure .env.docker has the same value before deploy.
+
+
+For production
+cd /var/www/vendorpulse
+
+NEW_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+
+for f in .env .env.docker; do
+  grep -v '^NEXTAUTH_SECRET=' "$f" > "$f.tmp"
+  printf '\nNEXTAUTH_SECRET=%s\n' "$NEW_SECRET" >> "$f.tmp"
+  mv "$f.tmp" "$f"
+done
+
+# verify exactly one key in each file (masked)
+grep -c '^NEXTAUTH_SECRET=' .env .env.docker
+grep '^NEXTAUTH_SECRET=' .env .env.docker | sed 's/=.*/=***masked***/'
+
+For reload app/front runtime
+cd /var/www/vendorpulse
+docker compose -f docker-compose.yml -f docker-compose.bind.yml restart app frontend
+
+For Local NEXTAUTH 
+cd /home/veraval/projects/vendorpulse && NEW_SECRET="$(openssl rand -base64 48 | tr -d '\n')" && for f in .env .env.docker; do grep -v '^NEXTAUTH_SECRET=' "$f" > "$f.tmp" && printf '\nNEXTAUTH_SECRET=%s\n' "$NEW_SECRET" >> "$f.tmp" && mv "$f.tmp" "$f"; done && grep -c '^NEXTAUTH_SECRET=' .env .env.docker && grep '^NEXTAUTH_SECRET=' .env .env.docker | sed 's/=.*/=masked/'

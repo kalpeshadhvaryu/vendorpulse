@@ -11,6 +11,7 @@ import {
   MONITORING_CHECK_TYPES,
   MONITORING_CHECK_TYPES_REQUIRING_ENDPOINT,
   createMonitoringCheck,
+  runMonitoringCheck,
   updateMonitoringCheck,
 } from "@/lib/api/monitoring";
 import { fetchVendors } from "@/lib/api/vendors";
@@ -388,11 +389,26 @@ export function MonitoringCheckUpsertSheet({ open, onOpenChange, check }: Props)
       }
       return createMonitoringCheck(payload);
     },
-    onSuccess: () => {
+    onSuccess: async (savedCheck) => {
       toast.success(isEdit ? "Check updated" : "Check created");
       void queryClient.invalidateQueries({ queryKey: ["monitoring-checks"] });
       void queryClient.invalidateQueries({ queryKey: ["monitoring-check-logs"] });
       void queryClient.invalidateQueries({ queryKey: ["monitoring-check-log-summary"] });
+
+      if (savedCheck.enabled) {
+        try {
+          await runMonitoringCheck(savedCheck.id);
+          const inv = () => {
+            void queryClient.invalidateQueries({ queryKey: ["monitoring-checks"] });
+            void queryClient.invalidateQueries({ queryKey: ["monitoring-check-logs"] });
+            void queryClient.invalidateQueries({ queryKey: ["monitoring-check-log-summary"] });
+          };
+          window.setTimeout(inv, 3500);
+        } catch {
+          toast.error("Check saved, but auto-run could not be queued.");
+        }
+      }
+
       onOpenChange(false);
     },
     onError: (e) => toast.error(getApiErrorMessage(e)),
