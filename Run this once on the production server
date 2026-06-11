@@ -29,8 +29,12 @@ docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php art
 
 
 Experience Monitoring must-have (after rebuild/new server):
-docker compose -f docker-compose.yml -f docker-compose.bind.yml exec horizon npx playwright install chromium
-docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app npx playwright install chromium
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec horizon \
+  sh -c 'PLAYWRIGHT_BROWSERS_PATH=/var/www/html/.playwright-browsers npx playwright install chromium'
+
+# Verify path is correct after install:
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec horizon \
+  find /var/www/html/.playwright-browsers -name chrome-headless-shell | head -3
 
 Important: do not run host workers together with Docker workers.
 Use Docker only for queue/scheduler in this setup:
