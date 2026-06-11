@@ -1,0 +1,182 @@
+VendorPulse Production Notes — kalpeshproduction
+=================================================
+Last updated: 2026-06-11
+
+─────────────────────────────────────────────────
+WHAT THIS COVERS
+─────────────────────────────────────────────────
+How to set up and deploy VendorPulse to production,
+including the monitoring check org-reassignment feature
+and the Docker .env fix.
+
+
+─────────────────────────────────────────────────
+ARCHITECTURE SUMMARY
+─────────────────────────────────────────────────
+- Laravel API       → Docker container (app)      → port 8000 (or APP_PORT)
+- Horizon workers   → Docker container (horizon)
+- Scheduler         → Docker container (scheduler)
+- PostgreSQL        → Docker container (postgres)  → host port 54321 (prod may differ)
+- Redis             → Docker container (redis)     → host port 63791
+- Next.js dashboard → runs outside Docker (npm run start or PM2)
+
+Local dev:  php artisan serve hits DB at 127.0.0.1:54321 (from .env)
+Docker:     containers hit DB at postgres:5432     (from .env.docker)
+
+KEY LESSON: Docker containers must use .env.docker (postgres:5432),
+            NOT the local .env (127.0.0.1:54321).
+            The docker-compose.bind.yml mounts .env.docker as .env inside containers.
+
+
+─────────────────────────────────────────────────
+FIRST-TIME PRODUCTION SERVER SETUP (run once)
+─────────────────────────────────────────────────
+
+1. SSH into production server.
+
+2. Clone / pull the repo:
+     cd /var/www/vendorpulse
+     git pull origin kalpesh
+
+3. Copy the env template and fill in all secrets:
+     cp deploy/liveproduction.env.template .env
+     nano .env
+     # Fill in: APP_KEY, DB_PASSWORD, MAIL_*, REDIS_PASSWORD (if any), APP_URL, etc.
+
+4. Run the one-time setup script:
+     bash vpproduction.sh setup
+   This will:
+     - Create .env.docker with DB_HOST=postgres, DB_PORT=5432, REDIS_HOST=redis
+     - Add .env.docker to .gitignore so secrets are never committed
+
+5. Run the first deploy:
+     bash vpproduction.sh deploy
+   This will:
+     - Rebuild Docker images
+     - Restart all containers (app, horizon, scheduler)
+     - Run php artisan migrate --force
+     - Run php artisan optimize (caches config using .env.docker = correct Docker hosts)
+  - Install Playwright Chromium inside Docker runtime (required for Experience Monitoring)
+  - Restart horizon/scheduler so workers pick latest env + browser cache
+
+6. Verify everything is healthy:
+     bash vpproduction.sh verify
+   This checks:
+     - DB connection from inside container
+     - User and monitoring check counts
+     - Latest monitoring log
+     - Horizon status
+     - Failed queue jobs
+
+
+─────────────────────────────────────────────────
+EVERY FUTURE DEPLOY
+─────────────────────────────────────────────────
+
+On your local machine — push code:
+  git add . && git commit -m "feat: ..." && git push origin kalpesh
+  cd web_dashboard && git add . && git commit -m "..." && git push origin kalpesh
+
+On production server:
+  cd /var/www/vendorpulse
+  git pull origin kalpesh
+  bash vpproduction.sh deploy
+  bash vpproduction.sh verify
+
+OR use the existing full deploy script:
+  bash deploy/release.sh deploy
+
+
+─────────────────────────────────────────────────
+MONITORING CHECK ORG REASSIGNMENT (new feature)
+─────────────────────────────────────────────────
+
+Frontend (super admin only):
+  1. Go to Monitoring page.
+  2. On any check row → three-dot menu → "Reassign organization".
+  3. Select target organization.
+  4. Click Preview (shows how many logs will move — dry-run, no changes).
+  5. Type the check name to confirm.
+  6. Click Execute move (runs in one DB transaction).
+
+Backend Artisan command (direct / for scripts):
+  Dry-run:
+    php artisan monitoring:reassign-check CHECK_UUID FROM_ORG_UUID TO_ORG_UUID
+
+  Execute:
+    php artisan monitoring:reassign-check CHECK_UUID FROM_ORG_UUID TO_ORG_UUID --execute
+
+  Inside Docker on production:
+    docker exec vendorpulse-app-1 php artisan monitoring:reassign-check \
+      cff63d39-888b-40fb-be8b-9b3d2563cf1c \
+      84060050-6be8-4cce-98d9-7ae80afd42ad \
+      7b4fb4cc-282b-4d87-ac44-daa0769ebf50
+
+  What it moves in one transaction:
+    - monitoring_checks.organization_id
+    - monitoring_logs.organization_id  (all logs for that check)
+    - domain_social_accounts.organization_id (if any)
+
+  Safety checks built in:
+    - Validates both orgs exist
+    - Confirms check belongs to source org
+    - Blocks if vendor ownership would be inconsistent
+    - Blocks if related data already has mismatches
+    - Default is DRY-RUN — must pass --execute to apply
+
+
+─────────────────────────────────────────────────
+KNOWN ISSUES AND FIXES APPLIED
+─────────────────────────────────────────────────
+
+Issue:  Docker containers read local .env (DB_HOST=127.0.0.1, port=54321)
+        which doesn't exist inside the Docker network → connection refused.
+Fix:    .env.docker created with DB_HOST=postgres, DB_PORT=5432.
+        docker-compose.bind.yml mounts .env.docker as .env inside containers.
+Files:  docker-compose.bind.yml, .env.docker (gitignored)
+
+Issue:  Docker build failed due to root-owned screenshot files in storage/.
+Fix:    .dockerignore now excludes storage/app/private/experience-monitoring/screenshots.
+File:   .dockerignore
+
+Issue:  Route not found for /api/v1/monitoring-checks/{id}/reassign
+Cause:  Old Docker image (no bind mount) was serving requests without new code.
+Fix:    Switched to docker-compose.bind.yml so container always uses live code.
+
+Issue:  Experience Monitoring started failing with
+  "browserType.launch: Executable doesn't exist .../.playwright-browsers/..."
+Cause:  Playwright browsers were not present in the worker runtime after rebuild/restart.
+Fix:    Install Chromium in runtime and keep only Docker workers active:
+    docker compose exec horizon npx playwright install chromium
+    docker compose exec app npx playwright install chromium
+  Avoid running host `php artisan horizon`/`schedule:work` while Docker workers are up.
+
+
+─────────────────────────────────────────────────
+USEFUL COMMANDS ON PRODUCTION
+─────────────────────────────────────────────────
+
+# Check running containers
+docker ps
+
+# View app logs (live)
+docker logs -f vendorpulse-app-1
+
+# Clear caches inside container
+docker exec vendorpulse-app-1 php artisan optimize:clear
+
+# Run migrations
+docker exec vendorpulse-app-1 php artisan migrate --force
+
+# Check Horizon
+docker exec vendorpulse-horizon-1 php artisan horizon:status
+
+# Check failed jobs
+docker exec vendorpulse-app-1 php artisan queue:failed
+
+# Tail Laravel log
+docker exec vendorpulse-app-1 tail -f storage/logs/laravel.log
+
+# Check DB is reachable from container
+docker exec vendorpulse-app-1 php artisan tinker \
+  --execute='echo DB::connection()->getPdo() ? "DB OK" : "FAIL";'

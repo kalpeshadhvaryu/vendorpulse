@@ -1,0 +1,56 @@
+# Run this once on the production server
+cd /var/www/vendorpulse
+cp .env .env.docker
+sed -i 's/^DB_HOST=.*/DB_HOST=postgres/' .env.docker
+sed -i 's/^DB_PORT=.*/DB_PORT=5432/' .env.docker
+sed -i 's/^REDIS_HOST=.*/REDIS_HOST=redis/' .env.docker
+sed -i 's/^REDIS_PORT=.*/REDIS_PORT=6379/' .env.docker
+
+
+
+bash vpproduction.sh setup   # once
+bash vpproduction.sh deploy
+bash vpproduction.sh verify
+
+For deployment (11th-06-2026): git pull origin kalpesh && bash vpproduction.sh deploy
+
+Note: If you update a secret in .env (e.g. change DB password), you must also update it in .env.docker, or just re-run the setup commands to recreate it.
+
+These 2 scripts where added when logs filter for change only
+# .env
+grep -q '^SITE_MONITORING_LOG_ONLY_CHANGES=' .env \
+  && sed -i 's/^SITE_MONITORING_LOG_ONLY_CHANGES=.*/SITE_MONITORING_LOG_ONLY_CHANGES=true/' .env \
+  || echo 'SITE_MONITORING_LOG_ONLY_CHANGES=true' >> .env
+
+grep -q '^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=' .env \
+  && sed -i 's/^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=.*/SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600/' .env \
+  || echo 'SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600' >> .env
+
+# .env.docker
+grep -q '^SITE_MONITORING_LOG_ONLY_CHANGES=' .env.docker \
+  && sed -i 's/^SITE_MONITORING_LOG_ONLY_CHANGES=.*/SITE_MONITORING_LOG_ONLY_CHANGES=true/' .env.docker \
+  || echo 'SITE_MONITORING_LOG_ONLY_CHANGES=true' >> .env.docker
+
+grep -q '^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=' .env.docker \
+  && sed -i 's/^SITE_MONITORING_LOG_HEARTBEAT_SECONDS=.*/SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600/' .env.docker \
+  || echo 'SITE_MONITORING_LOG_HEARTBEAT_SECONDS=3600' >> .env.docker
+
+Then apply
+  # local-host php artisan runtime
+php artisan optimize:clear
+
+# docker runtime
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php artisan optimize:clear
+
+Quickly Verify: 
+php artisan tinker --execute='echo config("site-monitoring.log_only_changes")."|".config("site-monitoring.log_heartbeat_seconds");'
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php artisan tinker --execute='echo config("site-monitoring.log_only_changes")."|".config("site-monitoring.log_heartbeat_seconds");'
+
+
+Experience Monitoring must-have (after rebuild/new server):
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec horizon npx playwright install chromium
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app npx playwright install chromium
+
+Important: do not run host workers together with Docker workers.
+Use Docker only for queue/scheduler in this setup:
+docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d horizon scheduler

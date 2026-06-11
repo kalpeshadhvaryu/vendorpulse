@@ -25,6 +25,7 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
+        Route::post('monitoring-checks/{monitoring_check_id}/reassign', [MonitoringCheckController::class, 'reassign']);
         Route::get('organizations/users', [OrganizationManagementController::class, 'users']);
         Route::get('organizations/users/{user}', [OrganizationManagementController::class, 'showUser']);
         Route::patch('organizations/users/{user}', [OrganizationManagementController::class, 'updateUser']);

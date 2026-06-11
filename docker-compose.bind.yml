@@ -13,11 +13,14 @@ services:
   app:
     volumes:
       - .:/var/www/html
+      - ./.env.docker:/var/www/html/.env:ro
 
   horizon:
     volumes:
       - .:/var/www/html
+      - ./.env.docker:/var/www/html/.env:ro
 
   scheduler:
     volumes:
       - .:/var/www/html
+      - ./.env.docker:/var/www/html/.env:ro

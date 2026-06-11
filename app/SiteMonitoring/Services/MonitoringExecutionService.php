@@ -39,6 +39,8 @@ class MonitoringExecutionService
             $previous = [
                 'last_status' => $check->last_status,
                 'consecutive_failures' => (int) $check->consecutive_failures,
+                'last_message' => $check->last_message,
+                'last_http_status' => $check->last_http_status,
             ];
 
             $strategy = $this->strategies->resolve($check);
@@ -65,16 +67,48 @@ class MonitoringExecutionService
             $isFailure = in_array($result->status->value, $failureStates, true);
             $consecutiveFailures = $isFailure ? $previous['consecutive_failures'] + 1 : 0;
 
-            $log = DB::transaction(function () use ($check, $result, $meta, $consecutiveFailures): MonitoringLog {
-                $log = MonitoringLog::query()->create([
-                    'monitoring_check_id' => $check->id,
-                    'organization_id' => $check->organization_id,
-                    'status' => $result->status,
-                    'http_status' => $result->httpStatus,
-                    'response_time_ms' => $result->responseTimeMs,
-                    'message' => $result->message,
-                    'meta' => $meta === [] ? null : $meta,
-                ]);
+            $statusChanged = (string) $previous['last_status'] !== $result->status->value;
+            $httpChanged = (int) ($previous['last_http_status'] ?? -1) !== (int) ($result->httpStatus ?? -1);
+            $messageChanged = (string) ($previous['last_message'] ?? '') !== (string) $result->message;
+            $hasMeaningfulChange = $statusChanged || $httpChanged || $messageChanged;
+
+            $failureThreshold = max(1, (int) config('site-monitoring.uptime_failure_notify_after', 1));
+            $crossedFailureThreshold = $isFailure
+                && $previous['consecutive_failures'] < $failureThreshold
+                && $consecutiveFailures >= $failureThreshold;
+            $recoveredFromFailure = $result->status === MonitoringLogStatus::Ok
+                && in_array($previous['last_status'], ['failed', 'error'], true);
+
+            $logOnlyChanges = (bool) config('site-monitoring.log_only_changes', false);
+            $heartbeatSeconds = max(0, (int) config('site-monitoring.log_heartbeat_seconds', 3600));
+
+            $shouldPersistLog = true;
+            if ($logOnlyChanges) {
+                $shouldPersistLog = $hasMeaningfulChange || $crossedFailureThreshold || $recoveredFromFailure;
+
+                if (! $shouldPersistLog && $heartbeatSeconds > 0) {
+                    $latestLogAt = MonitoringLog::query()
+                        ->where('monitoring_check_id', $check->id)
+                        ->latest('created_at')
+                        ->value('created_at');
+
+                    $shouldPersistLog = ! $latestLogAt || now()->diffInSeconds($latestLogAt) >= $heartbeatSeconds;
+                }
+            }
+
+            $log = DB::transaction(function () use ($check, $result, $meta, $consecutiveFailures, $shouldPersistLog): ?MonitoringLog {
+                $log = null;
+                if ($shouldPersistLog) {
+                    $log = MonitoringLog::query()->create([
+                        'monitoring_check_id' => $check->id,
+                        'organization_id' => $check->organization_id,
+                        'status' => $result->status,
+                        'http_status' => $result->httpStatus,
+                        'response_time_ms' => $result->responseTimeMs,
+                        'message' => $result->message,
+                        'meta' => $meta === [] ? null : $meta,
+                    ]);
+                }
 
                 $check->update([
                     'last_status' => $result->status->value,
@@ -91,7 +125,9 @@ class MonitoringExecutionService
 
             $check->refresh();
 
-            $this->dispatchAlerts($check, $log, $previous, $consecutiveFailures, $result);
+            if ($log) {
+                $this->dispatchAlerts($check, $log, $previous, $consecutiveFailures, $result);
+            }
         });
     }
 

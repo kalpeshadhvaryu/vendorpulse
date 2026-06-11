@@ -42,6 +42,18 @@ return [
     'http_log_header_max_lines' => (int) env('SITE_MONITORING_HTTP_LOG_HEADER_MAX_LINES', 20),
 
     /**
+     * When true, persist monitoring_logs only on meaningful changes (status/http/message)
+     * plus alert-transition events. A heartbeat row can still be saved periodically.
+     */
+    'log_only_changes' => (bool) env('SITE_MONITORING_LOG_ONLY_CHANGES', false),
+
+    /**
+     * Persist at least one row every N seconds even when no change is detected.
+     * Set 0 to disable heartbeat rows.
+     */
+    'log_heartbeat_seconds' => (int) env('SITE_MONITORING_LOG_HEARTBEAT_SECONDS', 3600),
+
+    /**
      * TLS handshake retries (transient network / handshake failures).
      */
     'ssl_connect_retries' => (int) env('SITE_MONITORING_SSL_CONNECT_RETRIES', 3),

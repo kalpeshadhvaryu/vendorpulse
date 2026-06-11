@@ -10,5 +10,7 @@ mobile_dashboard/build
 .env.*
 !.env.example
 storage/logs/*
+storage/app/private/experience-monitoring/screenshots
+storage/app/private/experience-monitoring/screenshots/*
 bootstrap/cache/*
 .phpunit.result.cache
