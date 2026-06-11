@@ -54,3 +54,11 @@ docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app npx pla
 Important: do not run host workers together with Docker workers.
 Use Docker only for queue/scheduler in this setup:
 docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d horizon scheduler
+
+Scripts to Run on live server : 
+cd /var/www/vendorpulse
+ls -la | grep vpproduction.sh
+git pull origin kalpesh
+bash vpproduction.sh setup
+bash vpproduction.sh deploy
+bash vpproduction.sh verify

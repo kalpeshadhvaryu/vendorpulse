@@ -45,34 +45,50 @@ docker_exec() {
     "${COMPOSE[@]}" exec -T "$service" "$@"
 }
 
+# Returns true if PID belongs to a Docker container (visible from host but not a real host process).
+is_container_process() {
+    local pid="$1"
+    grep -qE 'docker|kubepods|containerd' "/proc/$pid/cgroup" 2>/dev/null
+}
+
+# Returns true if any REAL host artisan horizon/scheduler processes exist (excluding container PIDs).
+host_workers_running() {
+    local found=0
+    while IFS= read -r pid; do
+        if ! is_container_process "$pid"; then
+            found=1
+            break
+        fi
+    done < <(pgrep -f "artisan horizon$|artisan horizon:|artisan schedule:work" 2>/dev/null || true)
+    return $((1 - found))
+}
+
 stop_host_workers() {
     echo "-- Stopping host-side workers (if any) --"
 
     local found=0
-    if pgrep -af "php artisan horizon|php8\.[0-9]+ artisan horizon|artisan horizon:supervisor|artisan horizon:work" >/dev/null 2>&1; then
-        found=1
-    fi
-
-    if pgrep -af "php artisan schedule:work|php8\.[0-9]+ artisan schedule:work" >/dev/null 2>&1; then
-        found=1
-    fi
+    local pids=()
+    while IFS= read -r pid; do
+        if ! is_container_process "$pid"; then
+            pids+=("$pid")
+            found=1
+        fi
+    done < <(pgrep -f "artisan horizon$|artisan horizon:|artisan schedule:work" 2>/dev/null || true)
 
     if [[ "$found" -eq 0 ]]; then
         ok "No host worker processes detected."
-
         return 0
     fi
 
+    warn "Stopping host worker PIDs: ${pids[*]}"
     php artisan horizon:terminate >/dev/null 2>&1 || true
-    pkill -f "php artisan schedule:work|php8\.[0-9]+ artisan schedule:work" >/dev/null 2>&1 || true
+    pkill -f "php artisan schedule:work" >/dev/null 2>&1 || true
 
     local attempts=0
-    while pgrep -af "php artisan horizon|php8\.[0-9]+ artisan horizon|artisan horizon:supervisor|artisan horizon:work|php artisan schedule:work|php8\.[0-9]+ artisan schedule:work" >/dev/null 2>&1; do
+    while host_workers_running; do
         attempts=$((attempts+1))
         if [[ $attempts -ge 10 ]]; then
-            warn "Host worker processes are still present after stop attempt."
-            pgrep -af "artisan horizon|artisan schedule:work" || true
-
+            warn "Host worker processes still present after stop attempt."
             return 0
         fi
         sleep 1
@@ -142,6 +158,10 @@ cmd_deploy() {
     echo "-- Rebuilding and restarting containers --"
     "${COMPOSE[@]}" up -d --build --force-recreate
 
+    # Install PHP dependencies (vendor/ is not committed to git, must be installed per-deploy)
+    echo "-- Installing PHP dependencies (composer install) --"
+    docker_exec app composer install --no-dev --optimize-autoloader
+
     # Wait for app to be up
     echo "-- Waiting for app container --"
     local attempts=0
@@ -166,7 +186,18 @@ cmd_deploy() {
     echo "-- Restarting worker services (horizon/scheduler) --"
     "${COMPOSE[@]}" restart horizon scheduler >/dev/null
 
+    # Rebuild Next.js frontend if frontend service exists in this compose stack.
+    if "${COMPOSE[@]}" ps frontend 2>/dev/null | grep -q 'frontend'; then
+        echo "-- Frontend (Next.js) container detected — rebuilding --"
+        "${COMPOSE[@]}" restart frontend >/dev/null
+        ok "Frontend restarted."
+    fi
+
     ok "Deploy complete."
+    echo ""
+    APP_PORT=$(grep '^APP_PORT=' "$ROOT_DIR/.env.docker" 2>/dev/null | cut -d= -f2 || echo '8001')
+    echo "  API (Laravel):  http://SERVER_IP:${APP_PORT}"
+    echo "  Frontend:       check your server's frontend port (default 3001)"
     echo ""
     echo "Run 'bash vpproduction.sh verify' to confirm everything is healthy."
 }
@@ -215,9 +246,21 @@ cmd_verify() {
     docker_exec app php artisan queue:failed 2>/dev/null || true
 
     # Mixed host + container workers can cause runtime drift and inconsistent queue behavior.
-    if pgrep -af "artisan horizon|artisan schedule:work" >/dev/null 2>&1; then
-        warn "Host worker processes detected. Prefer Docker-only workers to avoid drift."
-        pgrep -af "artisan horizon|artisan schedule:work" || true
+    if host_workers_running; then
+        warn "TRUE host worker processes detected (not Docker). Prefer Docker-only workers to avoid drift."
+        pgrep -af "artisan horizon|artisan schedule:work" | while IFS= read -r line; do
+            pid=$(echo "$line" | awk '{print $1}')
+            if ! is_container_process "$pid"; then echo "  HOST: $line"; fi
+        done || true
+    fi
+
+    # Port summary
+    echo "-- Port summary --"
+    APP_PORT=$(grep '^APP_PORT=' "$ROOT_DIR/.env.docker" 2>/dev/null | cut -d= -f2 || echo '8001')
+    echo "  Laravel API: host port ${APP_PORT} → container 8000"
+    if "${COMPOSE[@]}" ps frontend 2>/dev/null | grep -q 'frontend'; then
+        echo "  Frontend:    running (check docker compose ps for its host port)"
+        "${COMPOSE[@]}" ps frontend 2>/dev/null || true
     fi
 
     echo ""
