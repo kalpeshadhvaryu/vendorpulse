@@ -22,7 +22,10 @@ docker-compose.override.yml
 /storage/*.key
 /storage/pail
 /vendor
-web_dashboard
+/web_dashboard/node_modules
+/web_dashboard/.next
+/web_dashboard/out
+/web_dashboard/.turbo
 _ide_helper.php
 Homestead.json
 Homestead.yaml
