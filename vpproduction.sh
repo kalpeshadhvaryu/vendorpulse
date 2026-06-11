@@ -158,7 +158,11 @@ cmd_deploy() {
     echo "-- Removing cached frontend image --"
     docker rmi vendorpulse-frontend --force 2>/dev/null || true
 
-    # Bring up / rebuild
+    # Build frontend explicitly with --no-cache so Next.js code changes always take effect.
+    echo "-- Building frontend (no cache) --"
+    "${COMPOSE[@]}" build --no-cache frontend
+
+    # Bring up / rebuild remaining services
     echo "-- Rebuilding and restarting containers --"
     "${COMPOSE[@]}" up -d --build --force-recreate
 
