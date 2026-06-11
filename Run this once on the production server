@@ -62,3 +62,56 @@ git pull origin kalpesh
 bash vpproduction.sh setup
 bash vpproduction.sh deploy
 bash vpproduction.sh verify
+
+
+
+
+New Note
+Because your production has 2 repos (vendorpulse + nested web_dashboard), you must deploy both every time frontend changes are included.
+
+Local Publish
+
+Backend/root changes:
+cd /home/veraval/projects/vendorpulse
+git add ...
+git commit -m "..."
+git push origin kalpesh
+Frontend changes:
+cd /home/veraval/projects/vendorpulse/web_dashboard
+git add ...
+git commit -m "..."
+git push origin kalpesh
+Confirm both pushed:
+root: git rev-parse --short HEAD
+frontend: git -C web_dashboard rev-parse --short HEAD
+Production Deploy
+
+Pull backend repo:
+cd /var/www/vendorpulse
+git pull origin kalpesh
+Pull frontend repo:
+cd /var/www/vendorpulse/web_dashboard
+git pull origin kalpesh
+Deploy backend/services:
+cd /var/www/vendorpulse
+bash vpproduction.sh deploy
+bash vpproduction.sh verify
+Rebuild frontend container (always no-cache for certainty when UI changed):
+docker compose -f docker-compose.yml -f docker-compose.bind.yml build --no-cache frontend
+docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d frontend
+Smoke check:
+open site
+hard refresh (Ctrl+Shift+R)
+verify changed UI/API behavior
+
+Quick One-Block Production Command
+cd /var/www/vendorpulse && git pull origin kalpesh && \
+cd /var/www/vendorpulse/web_dashboard && git pull origin kalpesh && \
+cd /var/www/vendorpulse && bash vpproduction.sh deploy && bash vpproduction.sh verify && \
+docker compose -f docker-compose.yml -f docker-compose.bind.yml build --no-cache frontend && \
+docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d frontend
+
+
+Best Long-Term Improvement
+Move to one-repo deployment model (remove nested .git in production web_dashboard) so one push/pull/deploy updates everything and this confusion disappears.
+
