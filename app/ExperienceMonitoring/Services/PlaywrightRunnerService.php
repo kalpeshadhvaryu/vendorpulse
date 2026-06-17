@@ -14,12 +14,15 @@ class PlaywrightRunnerService
     {
         $command = $this->resolveRunnerCommand((string) config('experience-monitoring.runner_command', 'node'));
         $script = (string) config('experience-monitoring.runner_script');
+        $runnerTimeout = max(5, (int) config('experience-monitoring.runner_timeout_seconds', 300));
+        $jobTimeout = max(60, (int) config('experience-monitoring.run_job_timeout_seconds', 300));
+        $processTimeout = min(max($runnerTimeout, max(5, $jobTimeout - 5)), $jobTimeout);
 
         $process = new Process([
             $command,
             $script,
             json_encode($input->toArray(), JSON_THROW_ON_ERROR),
-        ], base_path(), $this->runnerEnvironment(), null, max(5, (int) config('experience-monitoring.runner_timeout_seconds', 120)));
+        ], base_path(), $this->runnerEnvironment(), null, $processTimeout);
 
         $process->run();
 

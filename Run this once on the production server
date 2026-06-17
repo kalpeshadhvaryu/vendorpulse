@@ -96,6 +96,13 @@ cd /var/www/vendorpulse && bash vpproduction.sh deploy && bash vpproduction.sh v
 docker compose -f docker-compose.yml -f docker-compose.bind.yml build --no-cache frontend && \
 docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d frontend
 
+Same flow as a single script (ExportDoc-style)
+cd /var/www/vendorpulse
+chmod +x deploy.sh
+bash deploy.sh
+# or choose branch explicitly
+bash deploy.sh kalpesh
+
 cd /var/www/vendorpulse
 docker compose -f docker-compose.yml -f docker-compose.bind.yml ps
 docker compose -f docker-compose.yml -f docker-compose.bind.yml logs --tail=80 frontend | grep -Ei 'error|nextauth|secret' || true

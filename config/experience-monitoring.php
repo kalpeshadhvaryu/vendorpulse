@@ -9,7 +9,7 @@ return [
 
     'runner_script' => env('EXPERIENCE_MONITORING_RUNNER_SCRIPT', base_path('scripts/experience-monitoring/runner.mjs')),
 
-    'runner_timeout_seconds' => (int) env('EXPERIENCE_MONITORING_RUNNER_TIMEOUT_SECONDS', 120),
+    'runner_timeout_seconds' => (int) env('EXPERIENCE_MONITORING_RUNNER_TIMEOUT_SECONDS', 300),
 
     'run_job_timeout_seconds' => (int) env('EXPERIENCE_MONITORING_RUN_JOB_TIMEOUT_SECONDS', 300),
 
