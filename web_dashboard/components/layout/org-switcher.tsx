@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/stores/auth-store";
 
 function filterOrganizations(organizations: Organization[], query: string): Organization[] {
@@ -100,8 +99,13 @@ export function OrgSwitcher() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[min(100vw-2rem,320px)] p-0" onCloseAutoFocus={(e) => e.preventDefault()}>
-        <div className="border-b border-border/60 p-2">
+      <DropdownMenuContent
+        align="start"
+        collisionPadding={12}
+        className="flex w-[min(100vw-2rem,320px)] max-h-[min(70vh,420px)] flex-col overflow-hidden p-0"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="shrink-0 border-b border-border/60 p-2">
           <DropdownMenuLabel className="px-1 py-0 text-xs text-muted-foreground">
             Organization
             {organizations.length > 0 ? ` · ${organizations.length} total` : ""}
@@ -132,44 +136,46 @@ export function OrgSwitcher() {
             </Button>
           </div>
         ) : (
-          <ScrollArea className="max-h-[min(50vh,320px)]">
-            <div className="p-1">
-              {isAdmin ? (
+          <div
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
+            onWheel={(event) => event.stopPropagation()}
+            onTouchMove={(event) => event.stopPropagation()}
+          >
+            {isAdmin ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  setOrganizationId(null);
+                  void queryClient.invalidateQueries();
+                  setOpen(false);
+                }}
+                className="flex cursor-pointer items-center justify-between gap-2"
+              >
+                <span className="truncate">All organizations</span>
+                {organizationId === null ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+              </DropdownMenuItem>
+            ) : null}
+            {isAdmin && filtered.length > 0 ? <DropdownMenuSeparator className="my-1" /> : null}
+            {filtered.length === 0 ? (
+              <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                {search.trim() ? "No organizations match your search." : "No organizations found."}
+              </p>
+            ) : (
+              filtered.map((org) => (
                 <DropdownMenuItem
+                  key={org.id}
                   onClick={() => {
-                    setOrganizationId(null);
+                    setOrganizationId(org.id);
                     void queryClient.invalidateQueries();
                     setOpen(false);
                   }}
                   className="flex cursor-pointer items-center justify-between gap-2"
                 >
-                  <span className="truncate">All organizations</span>
-                  {organizationId === null ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+                  <span className="truncate">{org.name}</span>
+                  {org.id === organizationId ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
                 </DropdownMenuItem>
-              ) : null}
-              {isAdmin && filtered.length > 0 ? <DropdownMenuSeparator className="my-1" /> : null}
-              {filtered.length === 0 ? (
-                <p className="px-2 py-4 text-center text-sm text-muted-foreground">
-                  {search.trim() ? "No organizations match your search." : "No organizations found."}
-                </p>
-              ) : (
-                filtered.map((org) => (
-                  <DropdownMenuItem
-                    key={org.id}
-                    onClick={() => {
-                      setOrganizationId(org.id);
-                      void queryClient.invalidateQueries();
-                      setOpen(false);
-                    }}
-                    className="flex cursor-pointer items-center justify-between gap-2"
-                  >
-                    <span className="truncate">{org.name}</span>
-                    {org.id === organizationId ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
-                  </DropdownMenuItem>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+              ))
+            )}
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
