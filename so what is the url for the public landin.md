@@ -1,5 +1,4 @@
-so what is the url for the public landing page ?
-
+Final 25-06-2026
 
 The public landing page is served by Laravel at the site root:
 
@@ -26,10 +25,12 @@ If you run the dashboard via Docker’s frontend service, rebuild that too when 
 
 docker compose build frontend
 docker compose up -d frontend
+
 Or, if Next runs outside Docker:
 
 cd web_dashboard && npm ci && npm run build
 # restart your Next process (pm2/systemd)
+
 .env (important)
 From your production template, set:
 
@@ -41,6 +42,7 @@ Then:
 
 docker compose exec app php artisan config:clear
 docker compose exec app php artisan route:clear
+
 One thing to verify: Nginx / reverse proxy
 The landing page only works if / goes to Laravel, not straight to Next.
 
