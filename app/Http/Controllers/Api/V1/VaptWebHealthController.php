@@ -29,9 +29,21 @@ class VaptWebHealthController extends BaseApiController
     {
         $validated = $request->validated();
         $targetUrl = (string) ($validated['target_url'] ?? '');
-        $maxLinks = (int) ($validated['max_links'] ?? 200);
+        $mode = (string) ($validated['mode'] ?? 'quick');
 
-        $report = $this->urlChecker->scan($targetUrl, $maxLinks);
+        if ($mode === 'site_crawl') {
+            $report = $this->urlChecker->crawlSite(
+                $targetUrl,
+                (int) ($validated['max_pages'] ?? 50),
+                (int) ($validated['max_depth'] ?? 3),
+                (int) ($validated['max_total_links'] ?? 500),
+            );
+        } else {
+            $report = $this->urlChecker->scan(
+                $targetUrl,
+                (int) ($validated['max_links'] ?? 200),
+            );
+        }
 
         return ApiResponse::success($report, 'URL checker report generated.');
     }

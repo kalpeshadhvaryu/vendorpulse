@@ -16,11 +16,16 @@ use App\Http\Controllers\Api\V1\SystemSettingsController;
 use App\Http\Controllers\Api\V1\VendorController;
 use App\Http\Controllers\Api\V1\VendorEmailController;
 use App\Http\Controllers\Api\V1\VaptWebHealthController;
+use App\Http\Controllers\Public\PublicToolsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::post('auth/register', [AuthController::class, 'register']);
     Route::post('auth/login', [AuthController::class, 'login']);
+
+    Route::middleware('throttle:20,60')->group(function (): void {
+        Route::post('public/dns-check', [PublicToolsController::class, 'dnsCheck']);
+    });
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);

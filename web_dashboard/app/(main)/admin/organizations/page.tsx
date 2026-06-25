@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { adminSelectClass, confirmAction, normalizeSlug } from "@/lib/admin/helpers";
+import { appPath } from "@/lib/app-path";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -105,7 +106,7 @@ export default function AdminOrganizationsPage() {
       setIsCreateOpen(false);
       toast.success("Organization created");
       if (response.data?.id) {
-        window.location.href = `/admin/organizations/${response.data.id}`;
+        window.location.href = appPath(`/admin/organizations/${response.data.id}`);
       }
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),

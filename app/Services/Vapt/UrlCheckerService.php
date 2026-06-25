@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class UrlCheckerService
 {
     private const CHECK_CONCURRENCY = 5;
+    private const CRAWL_MAX_RUNTIME_SECONDS = 600;
     private const PUPPETEER_TIMEOUT_MS = 45000;
     private const PUPPETEER_CLICK_SELECTORS = [
         'a[href*="plan-selection"]',
@@ -35,6 +36,7 @@ class UrlCheckerService
     /**
      * @return array{
      *   target_url: string,
+     *   mode: string,
      *   scanned_at: string,
      *   summary: array{total_links:int,active_links:int,broken_links:int,average_response_time_ms:float},
      *   links: array<int, array{source_url:string,discovered_link:string,status_code:int|null,status:string,response_time_ms:float|null,link_type:string,error:string|null}>
@@ -46,22 +48,175 @@ class UrlCheckerService
         $anchors = $this->extractAnchors($normalizedTargetUrl);
 
         if ($anchors === []) {
-            return [
-                'target_url' => $normalizedTargetUrl,
-                'scanned_at' => now()->toIso8601String(),
-                'summary' => [
-                    'total_links' => 0,
-                    'active_links' => 0,
-                    'broken_links' => 0,
-                    'average_response_time_ms' => 0.0,
-                ],
-                'links' => [],
-            ];
+            return $this->emptyReport($normalizedTargetUrl, 'quick');
         }
 
         $links = array_slice(array_values($anchors), 0, $maxLinks);
 
-        return $this->checkLinksAsync($normalizedTargetUrl, $links);
+        $report = $this->checkLinksAsync($normalizedTargetUrl, $links);
+        $report['mode'] = 'quick';
+
+        return $report;
+    }
+
+    /**
+     * @return array{
+     *   target_url: string,
+     *   mode: string,
+     *   scanned_at: string,
+     *   crawl: array{pages_crawled:int,max_pages:int,max_depth:int,max_total_links:int,stopped_reason:string,unreachable_pages:int},
+     *   summary: array{total_links:int,active_links:int,broken_links:int,average_response_time_ms:float},
+     *   links: array<int, array{source_url:string,discovered_link:string,status_code:int|null,status:string,response_time_ms:float|null,link_type:string,error:string|null}>
+     * }
+     */
+    public function crawlSite(
+        string $targetUrl,
+        int $maxPages = 50,
+        int $maxDepth = 3,
+        int $maxTotalLinks = 500,
+    ): array {
+        $normalizedTargetUrl = $this->normalizeTargetUrl($targetUrl);
+        $startHost = parse_url($normalizedTargetUrl, PHP_URL_HOST);
+
+        if (! is_string($startHost) || $startHost === '') {
+            $report = $this->emptyReport($normalizedTargetUrl, 'site_crawl');
+            $report['crawl'] = $this->crawlMeta(0, $maxPages, $maxDepth, $maxTotalLinks, 'completed', 0);
+
+            return $report;
+        }
+
+        $startedAt = microtime(true);
+        $visited = [];
+        $queue = [
+            [
+                'url' => $this->normalizeCrawlUrl($normalizedTargetUrl),
+                'depth' => 0,
+            ],
+        ];
+        $allLinksMap = [];
+        $pagesCrawled = 0;
+        $unreachablePages = 0;
+        $stoppedReason = 'completed';
+
+        while ($queue !== [] && $pagesCrawled < $maxPages) {
+            if (microtime(true) - $startedAt > self::CRAWL_MAX_RUNTIME_SECONDS) {
+                $stoppedReason = 'timeout';
+                break;
+            }
+
+            $item = array_shift($queue);
+            $pageUrl = $item['url'];
+            $depth = (int) $item['depth'];
+
+            if (isset($visited[$pageUrl]) || $depth > $maxDepth) {
+                continue;
+            }
+
+            $visited[$pageUrl] = true;
+            $pageResult = $this->extractAnchorsFromHtmlOnlyWithStatus($pageUrl);
+            $anchors = $pageResult['links'];
+
+            if (! $pageResult['ok']) {
+                $unreachablePages++;
+            }
+
+            $pagesCrawled++;
+
+            foreach ($anchors as $link) {
+                $discovered = $link['discovered_link'];
+                $key = $this->normalizeCrawlUrl($discovered);
+
+                if (! isset($allLinksMap[$key])) {
+                    $allLinksMap[$key] = $link;
+                }
+
+                if (
+                    $link['link_type'] === 'internal'
+                    && $depth < $maxDepth
+                    && $this->isCrawlablePageUrl($discovered)
+                ) {
+                    $normalizedInternal = $this->normalizeCrawlUrl($discovered);
+                    if (! isset($visited[$normalizedInternal])) {
+                        $queue[] = [
+                            'url' => $normalizedInternal,
+                            'depth' => $depth + 1,
+                        ];
+                    }
+                }
+            }
+
+            if (count($allLinksMap) >= $maxTotalLinks) {
+                $stoppedReason = 'max_total_links';
+                break;
+            }
+        }
+
+        if ($pagesCrawled >= $maxPages && $queue !== [] && $stoppedReason === 'completed') {
+            $stoppedReason = 'max_pages';
+        }
+
+        $linksToCheck = array_slice(array_values($allLinksMap), 0, $maxTotalLinks);
+        $report = $linksToCheck === []
+            ? $this->emptyReport($normalizedTargetUrl, 'site_crawl')
+            : $this->checkLinksAsync($normalizedTargetUrl, $linksToCheck);
+
+        $report['mode'] = 'site_crawl';
+        $report['crawl'] = $this->crawlMeta(
+            $pagesCrawled,
+            $maxPages,
+            $maxDepth,
+            $maxTotalLinks,
+            $stoppedReason,
+            $unreachablePages,
+        );
+
+        return $report;
+    }
+
+    /**
+     * @return array{
+     *   target_url: string,
+     *   mode: string,
+     *   scanned_at: string,
+     *   summary: array{total_links:int,active_links:int,broken_links:int,average_response_time_ms:float},
+     *   links: array<int, array<empty, empty>>
+     * }
+     */
+    private function emptyReport(string $targetUrl, string $mode): array
+    {
+        return [
+            'target_url' => $targetUrl,
+            'mode' => $mode,
+            'scanned_at' => now()->toIso8601String(),
+            'summary' => [
+                'total_links' => 0,
+                'active_links' => 0,
+                'broken_links' => 0,
+                'average_response_time_ms' => 0.0,
+            ],
+            'links' => [],
+        ];
+    }
+
+    /**
+     * @return array{pages_crawled:int,max_pages:int,max_depth:int,max_total_links:int,stopped_reason:string,unreachable_pages:int}
+     */
+    private function crawlMeta(
+        int $pagesCrawled,
+        int $maxPages,
+        int $maxDepth,
+        int $maxTotalLinks,
+        string $stoppedReason,
+        int $unreachablePages,
+    ): array {
+        return [
+            'pages_crawled' => $pagesCrawled,
+            'max_pages' => $maxPages,
+            'max_depth' => $maxDepth,
+            'max_total_links' => $maxTotalLinks,
+            'stopped_reason' => $stoppedReason,
+            'unreachable_pages' => $unreachablePages,
+        ];
     }
 
     private function normalizeTargetUrl(string $targetUrl): string
@@ -85,10 +240,18 @@ class UrlCheckerService
             return $this->buildLinksMapFromHrefs($targetUrl, $renderedHrefs);
         }
 
+        return $this->extractAnchorsFromHtmlOnly($targetUrl);
+    }
+
+    /**
+     * @return array{ok:bool,links:array<string, array{source_url:string,discovered_link:string,link_type:string}>}
+     */
+    private function extractAnchorsFromHtmlOnlyWithStatus(string $targetUrl): array
+    {
         $html = $this->fetchHtml($targetUrl);
 
         if ($html === null || $html === '') {
-            return [];
+            return ['ok' => false, 'links' => []];
         }
 
         $dom = new \DOMDocument();
@@ -100,7 +263,7 @@ class UrlCheckerService
         $nodes = $xpath->query('//a[@href]');
 
         if ($nodes === false) {
-            return [];
+            return ['ok' => true, 'links' => []];
         }
 
         $hrefs = [];
@@ -112,7 +275,18 @@ class UrlCheckerService
             }
         }
 
-        return $this->buildLinksMapFromHrefs($targetUrl, $hrefs);
+        return [
+            'ok' => true,
+            'links' => $this->buildLinksMapFromHrefs($targetUrl, $hrefs),
+        ];
+    }
+
+    /**
+     * @return array<string, array{source_url:string,discovered_link:string,link_type:string}>
+     */
+    private function extractAnchorsFromHtmlOnly(string $targetUrl): array
+    {
+        return $this->extractAnchorsFromHtmlOnlyWithStatus($targetUrl)['links'];
     }
 
     /**
@@ -446,5 +620,40 @@ class UrlCheckerService
         }
 
         return $scheme.'://'.$host.$port.$directory.'/'.$href;
+    }
+
+    private function normalizeCrawlUrl(string $url): string
+    {
+        $parts = parse_url($url);
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
+            return $url;
+        }
+
+        $scheme = strtolower((string) $parts['scheme']);
+        $host = strtolower((string) $parts['host']);
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $path = $parts['path'] ?? '/';
+        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+
+        return $scheme.'://'.$host.$port.$path.$query;
+    }
+
+    private function isCrawlablePageUrl(string $url): bool
+    {
+        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        if ($extension === '') {
+            return true;
+        }
+
+        $nonHtmlExtensions = [
+            'pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico',
+            'css', 'js', 'mjs', 'map', 'zip', 'gz', 'tar', 'rar',
+            'mp4', 'webm', 'mp3', 'wav', 'woff', 'woff2', 'ttf', 'eot',
+            'xml', 'json', 'csv', 'txt',
+        ];
+
+        return ! in_array($extension, $nonHtmlExtensions, true);
     }
 }

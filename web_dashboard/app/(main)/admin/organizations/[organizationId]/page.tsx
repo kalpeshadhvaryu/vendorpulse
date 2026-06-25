@@ -15,6 +15,7 @@ import {
   generateTemporaryPassword,
   normalizeSlug,
 } from "@/lib/admin/helpers";
+import { appPath } from "@/lib/app-path";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -196,7 +197,7 @@ export default function AdminOrganizationDetailPage({ params }: PageProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.organizationsAll });
       toast.success("Organization permanently deleted");
-      window.location.href = "/admin/organizations";
+      window.location.href = appPath("/admin/organizations");
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });

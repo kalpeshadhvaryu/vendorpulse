@@ -78,7 +78,6 @@ export default function PerformanceHealthPage() {
         sectionId="performance-health"
         statsByHref={{
           "/monitoring": `${checksQuery.data?.meta?.total ?? checks.length} checks · ${alertingChecks} alerts`,
-          "/vapt-web-health/url-checker": "Live link validation",
         }}
       />
     </div>

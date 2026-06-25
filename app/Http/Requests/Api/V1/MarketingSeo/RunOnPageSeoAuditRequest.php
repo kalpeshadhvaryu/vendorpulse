@@ -18,6 +18,10 @@ class RunOnPageSeoAuditRequest extends FormRequest
     {
         return [
             'target_url' => ['required', 'url', 'max:2048'],
+            'mode' => ['sometimes', 'string', 'in:quick,site_crawl'],
+            'max_pages' => ['sometimes', 'integer', 'min:1', 'max:200'],
+            'max_depth' => ['sometimes', 'integer', 'min:0', 'max:10'],
+            'authorized' => ['required_if:mode,site_crawl', 'accepted'],
         ];
     }
 }

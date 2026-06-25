@@ -17,15 +17,15 @@ export default function MarketingSeoPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Megaphone className="h-5 w-5" />
-            On-Page SEO Scorecard
+            On-Page SEO
           </CardTitle>
           <CardDescription>
-            Audit metadata, heading structure, image alt coverage, and Open Graph readiness for a target page.
+            Run quick SEO checks on one page or audit SEO signals across your domain.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href="/marketing-seo/on-page-seo-scorecard">Open scorecard</Link>
+            <Link href="/marketing-seo/on-page-seo-scorecard">Open On-Page SEO</Link>
           </Button>
         </CardContent>
       </Card>

@@ -470,6 +470,17 @@ export type ExperienceMonitoringTechnicalReport = {
   suggestions: string[];
 };
 
+export type UrlCheckerMode = "quick" | "site_crawl";
+
+export type UrlCheckerCrawlMeta = {
+  pages_crawled: number;
+  max_pages: number;
+  max_depth: number;
+  max_total_links: number;
+  stopped_reason: "completed" | "max_pages" | "max_depth" | "max_total_links" | "timeout";
+  unreachable_pages: number;
+};
+
 export type UrlCheckerReportRow = {
   source_url: string;
   discovered_link: string;
@@ -482,7 +493,9 @@ export type UrlCheckerReportRow = {
 
 export type UrlCheckerReport = {
   target_url: string;
+  mode: UrlCheckerMode;
   scanned_at: string;
+  crawl?: UrlCheckerCrawlMeta;
   summary: {
     total_links: number;
     active_links: number;
@@ -637,6 +650,8 @@ export type PortCheckerReport = {
   findings: PortCheckerFinding[];
 };
 
+export type SeoAuditMode = "quick" | "site_crawl";
+
 export type SeoAuditItem = {
   key: string;
   title: string;
@@ -644,8 +659,44 @@ export type SeoAuditItem = {
   suggestion: string | null;
 };
 
+export type SeoCrawlMeta = {
+  pages_crawled: number;
+  max_pages: number;
+  max_depth: number;
+  stopped_reason: "completed" | "max_pages" | "max_depth" | "timeout";
+  unreachable_pages: number;
+};
+
+export type SeoIssueRollup = {
+  key: string;
+  title: string;
+  page_count: number;
+  urls: string[];
+};
+
+export type SeoSitePageSummary = {
+  url: string;
+  overall_score: number;
+  totals: {
+    passed: number;
+    warnings: number;
+    critical: number;
+  };
+  top_critical: string | null;
+  unreachable: boolean;
+};
+
+export type SeoSiteSummary = {
+  average_score: number;
+  lowest_score: number;
+  lowest_url: string | null;
+  total_critical: number;
+  total_warnings: number;
+};
+
 export type OnPageSeoAuditReport = {
   target_url: string;
+  mode: SeoAuditMode;
   scanned_at: string;
   overall_score: number;
   totals: {
@@ -656,20 +707,34 @@ export type OnPageSeoAuditReport = {
   passed_audits: SeoAuditItem[];
   warnings: SeoAuditItem[];
   critical_fixes: SeoAuditItem[];
+  crawl?: SeoCrawlMeta;
+  site_summary?: SeoSiteSummary;
+  issue_rollups?: SeoIssueRollup[];
+  pages?: SeoSitePageSummary[];
   metrics: {
-    title_length: number | null;
-    meta_description_length: number | null;
-    h1_count: number;
-    h2_count: number;
-    h3_count: number;
-    images_total: number;
-    images_missing_alt: number;
-    images_missing_alt_percent: number;
-    open_graph_present: Record<string, boolean>;
+    title_length?: number | null;
+    meta_description_length?: number | null;
+    h1_count?: number;
+    h2_count?: number;
+    h3_count?: number;
+    images_total?: number;
+    images_missing_alt?: number;
+    images_missing_alt_percent?: number;
+    internal_link_count?: number;
+    word_count?: number;
+    has_json_ld?: boolean;
+    pages_audited?: number;
+    open_graph_present?: Record<string, boolean>;
   };
   extracted_values: {
     title: string | null;
     meta_description: string | null;
+    canonical?: string | null;
+    robots?: string | null;
+    viewport?: string | null;
+    html_lang?: string | null;
+    favicon?: string | null;
+    final_url?: string | null;
     headings: {
       h1: string[];
       h2: string[];

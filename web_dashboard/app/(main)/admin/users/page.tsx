@@ -11,6 +11,7 @@ import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { UserAccessFields } from "@/components/admin/user-access-fields";
 import { confirmAction, generateTemporaryPassword } from "@/lib/admin/helpers";
+import { appPath } from "@/lib/app-path";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -119,7 +120,7 @@ export default function AdminUsersPage() {
       setIsCreateOpen(false);
       toast.success("User created");
       if (response.data?.id) {
-        window.location.href = `/admin/users/${response.data.id}`;
+        window.location.href = appPath(`/admin/users/${response.data.id}`);
       }
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),

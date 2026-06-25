@@ -58,7 +58,6 @@ export const categoryLinks: SidebarCategory[] = [
     icon: Activity,
     children: [
       { href: "/monitoring", label: "Monitoring", icon: Activity },
-      { href: "/vapt-web-health/url-checker", label: "Link & Uptime Auditor", icon: Link2 },
     ],
   },
   {
@@ -68,6 +67,7 @@ export const categoryLinks: SidebarCategory[] = [
     icon: LockKeyhole,
     children: [
       { href: "/monitoring/experience", label: "VAPT", icon: Activity },
+      { href: "/vapt-web-health/url-checker", label: "Link/Website Auditor", icon: Link2 },
       { href: "/vapt-web-health", label: "Web Health", icon: Globe },
       { href: "/vapt-web-health/dns-check", label: "DNS Check", icon: Globe },
       { href: "/vapt-web-health/port-checker", label: "Port Checker", icon: ShieldAlert },
@@ -81,7 +81,7 @@ export const categoryLinks: SidebarCategory[] = [
     href: "/marketing-seo-hub",
     icon: Megaphone,
     children: [
-      { href: "/marketing-seo/on-page-seo-scorecard", label: "On-Page SEO Scorecard", icon: Globe },
+      { href: "/marketing-seo/on-page-seo-scorecard", label: "On-Page SEO", icon: Globe },
       { label: "Social Account Mapping", icon: Link2, placeholder: true },
     ],
   },

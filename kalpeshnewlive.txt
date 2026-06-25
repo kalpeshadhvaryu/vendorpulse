@@ -1,0 +1,201 @@
+VendorPulse — Public Landing Page & URLs
+=========================================
+Last updated: 2026-06-25
+
+Covers: public DNS landing at `/`, dashboard at `/web_dashboard`, local dev URLs,
+and production deploy (no extra Docker service required).
+
+
+─────────────────────────────────────────────────
+LOCAL URLs (development)
+─────────────────────────────────────────────────
+
+Public landing page (Laravel Blade — DNS / MX / SPF / DMARC toolbox):
+  http://127.0.0.1:8000/
+  http://localhost:8000/
+
+Web dashboard (Next.js dev server — npm run dev on port 3000):
+  http://127.0.0.1:3000/web_dashboard/
+  http://127.0.0.1:3000/web_dashboard/login/
+
+Laravel API:
+  http://127.0.0.1:8000/api/v1
+
+Public DNS API (no login, rate limited):
+  POST http://127.0.0.1:8000/api/v1/public/dns-check
+
+Laravel redirect helper (sends browser to Next dev):
+  http://127.0.0.1:8000/web_dashboard/login
+  → redirects to http://127.0.0.1:3000/web_dashboard/login
+
+Docker frontend container (if running — separate from npm dev):
+  http://127.0.0.1:3001/web_dashboard/
+
+IMPORTANT:
+- Landing page is NOT on port 3000. It is served by Laravel on port 8000.
+- Next.js on 3000 is only the dashboard (basePath: /web_dashboard).
+
+
+─────────────────────────────────────────────────
+PRODUCTION URLs
+─────────────────────────────────────────────────
+
+Public landing page:
+  https://vendorpulse.veravalonline.com/
+
+Web dashboard:
+  https://vendorpulse.veravalonline.com/web_dashboard/
+
+Login:
+  https://vendorpulse.veravalonline.com/web_dashboard/login
+
+API:
+  https://vendorpulse.veravalonline.com/api/v1
+
+Public DNS API:
+  POST https://vendorpulse.veravalonline.com/api/v1/public/dns-check
+
+
+─────────────────────────────────────────────────
+DO YOU NEED A NEW DOCKER SERVICE?
+─────────────────────────────────────────────────
+
+NO.
+
+The public landing page is part of the existing Laravel `app` container:
+  - routes/web.php          → `/` serves landing, `/web_dashboard/*` redirects to Next
+  - routes/api.php          → POST /api/v1/public/dns-check (throttled, no auth)
+  - resources/views/public/tools.blade.php
+  - app/Http/Controllers/Public/PublicToolsController.php
+  - config/vendorpulse.php  → WEB_DASHBOARD_URL
+
+Same Docker stack as today: app, horizon, scheduler, postgres, redis.
+(Optional: frontend container if you run Next inside Docker.)
+
+
+─────────────────────────────────────────────────
+PRODUCTION DEPLOY (after git pull / upload code)
+─────────────────────────────────────────────────
+
+On server:
+
+  cd /var/www/vendorpulse
+  git pull origin kalpesh
+
+  # Rebuild so the image includes new landing routes + Blade view
+  docker compose build app horizon scheduler
+  docker compose up -d app horizon scheduler
+
+If dashboard runs in Docker `frontend` service:
+
+  docker compose build frontend
+  docker compose up -d frontend
+
+If dashboard runs outside Docker (PM2 / npm run start):
+
+  cd /var/www/vendorpulse/web_dashboard
+  npm ci
+  npm run build
+  pm2 restart all
+
+Clear Laravel cache after .env changes:
+
+  docker compose exec app php artisan config:clear
+  docker compose exec app php artisan route:clear
+
+
+─────────────────────────────────────────────────
+PRODUCTION .env (required variables)
+─────────────────────────────────────────────────
+
+In /var/www/vendorpulse/.env:
+
+  APP_URL=https://vendorpulse.veravalonline.com
+  WEB_DASHBOARD_URL=https://vendorpulse.veravalonline.com
+
+If API is on a different host port (e.g. APP_PORT=8001 behind Nginx):
+
+  APP_PORT=8001
+  APP_URL=https://vendorpulse.veravalonline.com
+  WEB_DASHBOARD_URL=https://vendorpulse.veravalonline.com
+
+WEB_DASHBOARD_URL controls where /web_dashboard/* redirects go.
+Without it, redirects may point to http://127.0.0.1:3000 (local default).
+
+Also ensure (same-origin production):
+
+  NEXT_PUBLIC_API_URL=https://vendorpulse.veravalonline.com/api/v1
+  NEXTAUTH_URL=https://vendorpulse.veravalonline.com
+  CORS_ALLOWED_ORIGINS=https://vendorpulse.veravalonline.com
+  SANCTUM_STATEFUL_DOMAINS=vendorpulse.veravalonline.com
+
+See also: deploy/liveproduction.env.template, kalpeshliveenv
+
+
+─────────────────────────────────────────────────
+NGINX / REVERSE PROXY (must be correct)
+─────────────────────────────────────────────────
+
+Landing page only works if `/` goes to Laravel, NOT straight to Next.
+
+Typical production routing:
+
+  Path                  Backend
+  ----                  -------
+  /                     Laravel app container (APP_PORT, e.g. 8001)
+  /api/*                Laravel app container
+  /web_dashboard/*      Next.js (PM2 or frontend container)
+
+If Nginx currently redirects `/` → `/web_dashboard`, update the config.
+Previously `/` may have redirected to the dashboard; that must change for the
+public DNS toolbox to appear at the domain root.
+
+
+─────────────────────────────────────────────────
+POST-DEPLOY VERIFICATION
+─────────────────────────────────────────────────
+
+  https://vendorpulse.veravalonline.com/
+    → VendorPulse "Free DNS & Email Check" landing page (HTTP 200)
+
+  https://vendorpulse.veravalonline.com/web_dashboard/
+    → Dashboard app (HTTP 200)
+
+  https://vendorpulse.veravalonline.com/web_dashboard/login
+    → Login page (HTTP 200)
+
+  https://vendorpulse.veravalonline.com/up
+    → Laravel health (HTTP 200)
+
+  POST /api/v1/public/dns-check with {"target":"127.0.0.1"}
+    → Should reject private targets (success: false, HTTP 422)
+
+
+─────────────────────────────────────────────────
+LOCAL DOCKER REBUILD (after Laravel code changes)
+─────────────────────────────────────────────────
+
+Default compose does NOT bind-mount source code — rebuild required:
+
+  cd /home/veraval/projects/vendorpulse   # or /var/www/vendorpulse on server
+  docker compose build app
+  docker compose up -d --force-recreate app horizon scheduler
+
+For live code inside Docker without rebuild each time:
+
+  docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d
+
+docker-compose.yml includes:
+  WEB_DASHBOARD_URL: ${WEB_DASHBOARD_URL:-http://127.0.0.1:3000}
+
+
+─────────────────────────────────────────────────
+QUICK REFERENCE
+─────────────────────────────────────────────────
+
+| Environment | Landing page              | Dashboard                          |
+|-------------|---------------------------|------------------------------------|
+| Local dev   | :8000/                    | :3000/web_dashboard/               |
+| Production  | vendorpulse...com/        | vendorpulse...com/web_dashboard/   |
+
+No new container. Pull code → rebuild app → set WEB_DASHBOARD_URL → verify Nginx.

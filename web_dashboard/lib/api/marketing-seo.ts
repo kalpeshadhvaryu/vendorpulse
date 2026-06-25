@@ -1,8 +1,12 @@
 import { api } from "./client";
-import type { ApiSuccessResponse, OnPageSeoAuditReport } from "./types";
+import type { ApiSuccessResponse, OnPageSeoAuditReport, SeoAuditMode } from "./types";
 
 export type RunOnPageSeoAuditPayload = {
   target_url: string;
+  mode?: SeoAuditMode;
+  max_pages?: number;
+  max_depth?: number;
+  authorized?: boolean;
 };
 
 export async function runOnPageSeoAudit(

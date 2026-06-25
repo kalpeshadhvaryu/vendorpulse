@@ -82,7 +82,7 @@ export default function MarketingSeoHubPage() {
       <MainMenuSectionCards
         sectionId="marketing-seo"
         statsByHref={{
-          "/marketing-seo/on-page-seo-scorecard": "On-page audit ready",
+          "/marketing-seo/on-page-seo-scorecard": "Quick SEO and site audits",
         }}
       />
     </div>

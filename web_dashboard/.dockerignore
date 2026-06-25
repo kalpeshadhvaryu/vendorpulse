@@ -1,0 +1,19 @@
+# Keep Docker build context small for Next.js frontend image builds.
+node_modules
+.next
+.git
+.gitignore
+.npm
+.npmrc
+coverage
+dist
+build
+out
+*.log
+.DS_Store
+.vscode
+.idea
+.env
+.env.*
+!.env.example
+tsconfig.tsbuildinfo

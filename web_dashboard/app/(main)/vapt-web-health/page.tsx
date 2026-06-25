@@ -18,15 +18,15 @@ export default function VaptWebHealthPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
-              URL Checker
+              Link/Website Auditor
             </CardTitle>
             <CardDescription>
-              Crawl a web page, collect discovered anchors, and measure link health with status and latency.
+              Quick link checks on a single page or a bounded crawl across your domain.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/vapt-web-health/url-checker">Open URL Checker</Link>
+              <Link href="/vapt-web-health/url-checker">Open Link/Website Auditor</Link>
             </Button>
           </CardContent>
         </Card>
@@ -87,7 +87,7 @@ export default function VaptWebHealthPage() {
         <CardHeader>
           <CardTitle className="text-base">Safety and rate-limit behavior</CardTitle>
           <CardDescription>
-            URL Checker is tuned for safe health checks: max 5 parallel link requests, browser-like headers,
+            Link/Website Auditor is tuned for safe health checks: max 5 parallel link requests, browser-like headers,
             and fallback logic for strict firewalls.
           </CardDescription>
         </CardHeader>

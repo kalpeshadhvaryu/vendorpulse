@@ -3,6 +3,7 @@ import type {
   ApiSuccessResponse,
   DnsCheckReport,
   PortCheckerReport,
+  UrlCheckerMode,
   UrlCheckerReport,
   WebsiteSpeedtestReport,
   WebsiteSpeedtestRun,
@@ -10,7 +11,12 @@ import type {
 
 export type RunUrlCheckerPayload = {
   target_url: string;
+  mode?: UrlCheckerMode;
   max_links?: number;
+  max_pages?: number;
+  max_depth?: number;
+  max_total_links?: number;
+  authorized?: boolean;
 };
 
 export async function runUrlChecker(payload: RunUrlCheckerPayload): Promise<UrlCheckerReport> {

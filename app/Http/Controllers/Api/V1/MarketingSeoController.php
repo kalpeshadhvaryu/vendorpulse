@@ -15,8 +15,19 @@ class MarketingSeoController extends BaseApiController
 
     public function onPageAudit(RunOnPageSeoAuditRequest $request): JsonResponse
     {
-        $targetUrl = (string) $request->validated('target_url');
-        $report = $this->seoAuditService->audit($targetUrl);
+        $validated = $request->validated();
+        $targetUrl = (string) ($validated['target_url'] ?? '');
+        $mode = (string) ($validated['mode'] ?? 'quick');
+
+        if ($mode === 'site_crawl') {
+            $report = $this->seoAuditService->crawlSite(
+                $targetUrl,
+                (int) ($validated['max_pages'] ?? 30),
+                (int) ($validated['max_depth'] ?? 3),
+            );
+        } else {
+            $report = $this->seoAuditService->audit($targetUrl);
+        }
 
         return ApiResponse::success($report, 'On-page SEO audit generated.');
     }
