@@ -453,6 +453,13 @@ export function MonitoringCheckUpsertSheet({ open, onOpenChange, check }: Props)
                 Uptime, HTTP(S), SSL, TLS, domain, and WHOIS checks require an endpoint (URL or host). TCP, ping, DNS,
                 custom, and server may omit it depending on your configuration.
               </p>
+              {checkType === "domain" || checkType === "whois" ? (
+                <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-muted-foreground">
+                  <strong className="text-foreground">Domain expiry:</strong> runs use public RDAP to read registration
+                  expiry. Status becomes <strong className="text-foreground">degraded</strong> within 30 days of expiry;
+                  org users receive a notification (throttled daily).
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">

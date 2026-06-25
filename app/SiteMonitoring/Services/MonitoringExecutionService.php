@@ -85,6 +85,7 @@ class MonitoringExecutionService
                     'next_run_at' => now()->addSeconds(max(60, (int) $check->interval_seconds)),
                     'last_http_status' => $result->httpStatus,
                     'last_response_time_ms' => $result->responseTimeMs,
+                    'last_meta' => $meta === [] ? null : $meta,
                     'consecutive_failures' => $consecutiveFailures,
                 ]);
 

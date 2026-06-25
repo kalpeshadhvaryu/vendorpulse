@@ -221,6 +221,12 @@ export type MonitoringCheck = {
   last_message: string | null;
   last_http_status: number | null;
   last_response_time_ms: number | null;
+  domain: string | null;
+  domain_expires_at: string | null;
+  domain_days_remaining: number | null;
+  domain_registrar: string | null;
+  ssl_expires_at: string | null;
+  ssl_days_remaining: number | null;
   consecutive_failures?: number;
   last_run_at: string | null;
   next_run_at: string | null;

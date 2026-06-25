@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CalendarClock, Radio } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Globe, Radio } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,14 @@ import { useDashboardSettings } from "@/stores/dashboard-settings-store";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { fetchOrganizations } from "@/lib/api/organizations";
 import { cn } from "@/lib/utils";
+import {
+  listDomainExpiryAlerts,
+  formatDomainDaysRemaining,
+  formatDomainExpiryDate,
+  domainDaysTone,
+  DOMAIN_EXPIRY_WARNING_DAYS,
+} from "@/lib/monitoring/domain-expiry";
+import { Badge } from "@/components/ui/badge";
 
 type MonitoringStatusKey = "ok" | "degraded" | "failed" | "error" | "skipped" | "unknown";
 
@@ -172,6 +180,8 @@ export default function DashboardPage() {
   const alertChecks = checks.filter((c) =>
     ["failed", "error", "degraded"].includes((c.last_status ?? "").toLowerCase()),
   ).length;
+
+  const domainExpiryAlerts = useMemo(() => listDomainExpiryAlerts(checks), [checks]);
 
   const unread = notifications.filter((n) => !n.read_at).length;
 
@@ -506,7 +516,62 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="border-border/60">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Globe className="h-4 w-4 text-primary" />
+                Domain registration expiry
+              </CardTitle>
+              <CardDescription>
+                WHOIS/domain checks expiring within {DOMAIN_EXPIRY_WARNING_DAYS} days
+              </CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/monitoring?type=domain" className="gap-1">
+                Monitoring <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loading ? (
+              <Skeleton className="h-28 w-full" />
+            ) : domainExpiryAlerts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No domain or WHOIS checks need attention. Add a check with type <strong className="text-foreground">domain</strong> or{" "}
+                <strong className="text-foreground">whois</strong> to track registration expiry.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {domainExpiryAlerts.slice(0, 6).map((check) => (
+                  <li
+                    key={check.id}
+                    className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{check.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {check.domain ?? check.endpoint ?? "—"}
+                        {check.domain_registrar ? ` · ${check.domain_registrar}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Expires {formatDomainExpiryDate(check.domain_expires_at)}
+                      </p>
+                    </div>
+                    <Badge variant={domainDaysTone(check.domain_days_remaining)} className="shrink-0">
+                      {formatDomainDaysRemaining(check.domain_days_remaining)}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {domainExpiryAlerts.length > 6 ? (
+              <p className="text-xs text-muted-foreground">+{domainExpiryAlerts.length - 6} more in Monitoring</p>
+            ) : null}
+          </CardContent>
+        </Card>
+
         <Card className="border-border/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>

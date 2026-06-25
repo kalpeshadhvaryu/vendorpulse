@@ -23,6 +23,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import {
+  domainDaysTone,
+  formatDomainDaysRemaining,
+  formatDomainExpiryDate,
+  formatLogStatusLabel,
+  isDomainMonitoringCheck,
+  readDomainProbeMeta,
+} from "@/lib/monitoring/domain-expiry";
 
 const LOG_STATUS_OPTIONS = ["", "ok", "failed", "error", "degraded", "skipped"] as const;
 
@@ -152,6 +160,86 @@ export default function MonitoringCheckHistoryPage() {
   const issueTabClass =
     "border border-red-500/35 bg-red-500/10 text-red-700 data-[state=active]:bg-red-500/20 data-[state=active]:text-red-800 dark:border-red-500/50 dark:bg-red-500/20 dark:text-red-300 dark:data-[state=active]:bg-red-500/35 dark:data-[state=active]:text-red-100";
 
+  const isDomainCheck = isDomainMonitoringCheck(checkQuery.data?.type);
+  const domainSnapshot = checkQuery.data ?? null;
+
+  function renderLogTable(rows: NonNullable<typeof logsQuery.data>["items"]) {
+    const colSpan = isDomainCheck ? 8 : 5;
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>When (local)</TableHead>
+            <TableHead>Status</TableHead>
+            {isDomainCheck ? (
+              <>
+                <TableHead>Expires</TableHead>
+                <TableHead>Days left</TableHead>
+                <TableHead>Registrar</TableHead>
+              </>
+            ) : null}
+            <TableHead>HTTP</TableHead>
+            <TableHead className="text-right">Latency</TableHead>
+            <TableHead>Message</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={colSpan} className="text-center text-sm text-muted-foreground">
+                No log rows for this filter.
+              </TableCell>
+            </TableRow>
+          ) : (
+            rows.map((row) => {
+              const probe = readDomainProbeMeta(row.meta);
+
+              return (
+                <TableRow key={row.id}>
+                  <TableCell className="whitespace-nowrap text-sm">
+                    {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant(row.status)}>
+                      {formatLogStatusLabel(row.status, row.meta, isDomainCheck)}
+                    </Badge>
+                  </TableCell>
+                  {isDomainCheck ? (
+                    <>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {formatDomainExpiryDate(probe.domain_expires_at)}
+                      </TableCell>
+                      <TableCell>
+                        {probe.domain_days_remaining != null ? (
+                          <Badge variant={domainDaysTone(probe.domain_days_remaining)}>
+                            {formatDomainDaysRemaining(probe.domain_days_remaining)}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[160px] truncate text-sm text-muted-foreground">
+                        {probe.domain_registrar ?? "—"}
+                      </TableCell>
+                    </>
+                  ) : null}
+                  <TableCell className="text-muted-foreground">{row.http_status ?? "—"}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {row.response_time_ms != null ? `${row.response_time_ms} ms` : "—"}
+                  </TableCell>
+                  <TableCell className="max-w-md truncate text-sm text-muted-foreground">
+                    {row.message ?? "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -170,6 +258,39 @@ export default function MonitoringCheckHistoryPage() {
           </p>
         </div>
       </div>
+
+      {isDomainCheck && domainSnapshot ? (
+        <Card className="border-border/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Domain registration</CardTitle>
+            <CardDescription>Latest WHOIS/RDAP snapshot from the most recent run.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Domain</p>
+              <p className="text-sm font-semibold">{domainSnapshot.domain ?? domainSnapshot.endpoint ?? "—"}</p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Expires</p>
+              <p className="text-sm font-semibold">{formatDomainExpiryDate(domainSnapshot.domain_expires_at)}</p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Days left</p>
+              {domainSnapshot.domain_days_remaining != null ? (
+                <Badge variant={domainDaysTone(domainSnapshot.domain_days_remaining)} className="mt-1">
+                  {formatDomainDaysRemaining(domainSnapshot.domain_days_remaining)}
+                </Badge>
+              ) : (
+                <p className="text-sm font-semibold">—</p>
+              )}
+            </div>
+            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Registrar</p>
+              <p className="text-sm font-semibold">{domainSnapshot.domain_registrar ?? "—"}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-border/60">
         <CardHeader>
@@ -324,44 +445,7 @@ export default function MonitoringCheckHistoryPage() {
                 <p className="text-sm text-destructive">{getApiErrorMessage(logsQuery.error)}</p>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>When (local)</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>HTTP</TableHead>
-                        <TableHead className="text-right">Latency</TableHead>
-                        <TableHead>Message</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {visibleRows.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                            No log rows for this filter.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        visibleRows.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell className="whitespace-nowrap text-sm">
-                              {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{row.http_status ?? "—"}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">
-                              {row.response_time_ms != null ? `${row.response_time_ms} ms` : "—"}
-                            </TableCell>
-                            <TableCell className="max-w-md truncate text-sm text-muted-foreground">
-                              {row.message ?? "—"}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                  {renderLogTable(visibleRows)}
                   {lastPage > 1 ? (
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-xs text-muted-foreground">
@@ -485,36 +569,7 @@ export default function MonitoringCheckHistoryPage() {
                 return failedRows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No failed or error runs in this window. ✅</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>When (local)</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>HTTP</TableHead>
-                        <TableHead className="text-right">Latency</TableHead>
-                        <TableHead>Message</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {failedRows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell className="whitespace-nowrap text-sm">
-                            {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{row.http_status ?? "—"}</TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {row.response_time_ms != null ? `${row.response_time_ms} ms` : "—"}
-                          </TableCell>
-                          <TableCell className="max-w-md truncate text-sm text-muted-foreground">
-                            {row.message ?? "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  renderLogTable(failedRows)
                 );
               })()}
             </CardContent>

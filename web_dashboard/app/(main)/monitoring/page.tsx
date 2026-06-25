@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MoreHorizontal, Play, Plus } from "lucide-react";
@@ -34,6 +34,7 @@ import { MonitoringCheckReassignSheet } from "@/components/monitoring/monitoring
 import { MonitoringCheckUpsertSheet } from "@/components/monitoring/monitoring-check-upsert-sheet";
 import { useAuthStore } from "@/stores/auth-store";
 import { useDashboardSettings } from "@/stores/dashboard-settings-store";
+import { formatCheckStatusLabel } from "@/lib/monitoring/domain-expiry";
 
 function statusVariant(status: string | null): "success" | "warning" | "destructive" | "secondary" {
   const s = (status ?? "").toLowerCase();
@@ -93,7 +94,7 @@ const CHECK_TYPE_TABS: Array<{ value: "all" | MonitoringCheckType; label: string
   })),
 ];
 
-export default function MonitoringPage() {
+function MonitoringPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -113,6 +114,8 @@ export default function MonitoringPage() {
   const [perPage, setPerPage] = useState<number>(
     [12, 50, 100].includes(monitoringPerPage) ? monitoringPerPage : 50,
   );
+
+  const showDomainExpiryInStatus = checkType === "domain" || checkType === "whois";
 
   const listParams = useMemo((): Record<string, string> => {
     const params: Record<string, string> = {
@@ -205,6 +208,12 @@ export default function MonitoringPage() {
                 <CardDescription>
                   Add checks here or queue a manual run. <strong className="font-medium text-foreground">Run</strong> dispatches a
                   Redis job; the probe executes when Horizon processes the <code className="rounded bg-muted px-1 text-xs">site-monitoring</code> queue.
+                  {checkType === "domain" || checkType === "whois" ? (
+                    <>
+                      {" "}
+                      Domain and WHOIS checks show registration expiry from RDAP; alerts fire when within 30 days.
+                    </>
+                  ) : null}
                 </CardDescription>
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -305,7 +314,9 @@ export default function MonitoringPage() {
                               <Badge variant={c.enabled ? "success" : "secondary"}>{c.enabled ? "On" : "Off"}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={statusVariant(c.last_status)}>{c.last_status ?? "—"}</Badge>
+                              <Badge variant={statusVariant(c.last_status)}>
+                                {formatCheckStatusLabel(c, { showDomainExpiryDays: showDomainExpiryInStatus })}
+                              </Badge>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                               {c.last_status === "ok" && c.uptime_since
@@ -474,5 +485,13 @@ export default function MonitoringPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function MonitoringPage() {
+  return (
+    <Suspense fallback={<Skeleton className="mx-auto h-64 max-w-7xl w-full" />}>
+      <MonitoringPageContent />
+    </Suspense>
   );
 }

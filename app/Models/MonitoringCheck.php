@@ -29,6 +29,7 @@ class MonitoringCheck extends Model
         'last_message',
         'last_http_status',
         'last_response_time_ms',
+        'last_meta',
         'consecutive_failures',
         'last_run_at',
         'next_run_at',
@@ -40,6 +41,7 @@ class MonitoringCheck extends Model
     {
         return [
             'configuration' => 'array',
+            'last_meta' => 'array',
             'enabled' => 'boolean',
             'last_run_at' => 'datetime',
             'next_run_at' => 'datetime',

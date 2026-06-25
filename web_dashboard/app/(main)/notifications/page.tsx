@@ -48,6 +48,17 @@ function formatNotification(eventKey: string | undefined, payload: Record<string
     };
   }
 
+  if (eventKey === "site_monitoring.domain_expiring_soon") {
+    const domain = typeof payload?.domain === "string" ? payload.domain : "domain";
+    const days = payload?.domain_days_remaining;
+    const daysText = typeof days === "number" ? `${days} day(s)` : "soon";
+
+    return {
+      title: "Domain Registration Expiring Soon",
+      message: `${domain} expires in ${daysText}. Review the WHOIS/domain check in Monitoring.`,
+    };
+  }
+
   return {
     title: eventKey,
     message: null,

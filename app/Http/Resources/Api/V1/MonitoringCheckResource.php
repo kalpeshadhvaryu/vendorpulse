@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Models\MonitoringCheck;
+use App\Support\MonitoringProbeMeta;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -15,6 +16,8 @@ class MonitoringCheckResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $probe = MonitoringProbeMeta::extract(is_array($this->last_meta) ? $this->last_meta : null);
+
         return [
             'id' => $this->id,
             'organization_id' => $this->organization_id,
@@ -29,6 +32,12 @@ class MonitoringCheckResource extends JsonResource
             'last_message' => $this->last_message,
             'last_http_status' => $this->last_http_status,
             'last_response_time_ms' => $this->last_response_time_ms,
+            'domain' => $probe['domain'],
+            'domain_expires_at' => $probe['domain_expires_at'],
+            'domain_days_remaining' => $probe['domain_days_remaining'],
+            'domain_registrar' => $probe['domain_registrar'],
+            'ssl_expires_at' => $probe['ssl_expires_at'],
+            'ssl_days_remaining' => $probe['ssl_days_remaining'],
             'consecutive_failures' => $this->consecutive_failures,
             'last_run_at' => $this->last_run_at?->toIso8601String(),
             'next_run_at' => $this->next_run_at?->toIso8601String(),
