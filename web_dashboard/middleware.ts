@@ -47,7 +47,7 @@ export function middleware(request: NextRequest) {
     // Do not redirect /login → /dashboard from cookie alone. `vp_session` can outlive
     // cleared localStorage; Zustand then has no token and AuthGuard sends users back
     // to /login, which would loop forever if we forced them to /dashboard here.
-    if (pathname === "/login") {
+    if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") {
       return NextResponse.next();
     }
 
@@ -65,6 +65,8 @@ export const config = {
   matcher: [
     "/web_dashboard",
     "/web_dashboard/login",
+    "/web_dashboard/forgot-password",
+    "/web_dashboard/reset-password",
     "/web_dashboard/dashboard",
     "/web_dashboard/dashboard/:path*",
     "/web_dashboard/admin",

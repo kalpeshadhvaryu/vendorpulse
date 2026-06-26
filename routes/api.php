@@ -23,6 +23,19 @@ Route::prefix('v1')->group(function (): void {
     Route::post('auth/register', [AuthController::class, 'register']);
     Route::post('auth/login', [AuthController::class, 'login']);
 
+    Route::middleware('throttle:5,1')->group(function (): void {
+        Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    });
+
+    Route::middleware('throttle:10,1')->group(function (): void {
+        Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
+    });
+
+    Route::middleware('throttle:6,1')->group(function (): void {
+        Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
+    });
+
     Route::middleware('throttle:20,60')->group(function (): void {
         Route::post('public/dns-check', [PublicToolsController::class, 'dnsCheck']);
     });

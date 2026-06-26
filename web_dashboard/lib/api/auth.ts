@@ -24,3 +24,25 @@ export async function fetchMe(): Promise<User> {
 export async function logoutRequest(): Promise<void> {
   await api.post("/auth/logout");
 }
+
+export async function forgotPasswordRequest(email: string): Promise<string> {
+  const { data } = await api.post<ApiSuccessResponse<null>>("/auth/forgot-password", {
+    email: email.trim().toLowerCase(),
+  });
+  return data.message;
+}
+
+export async function resetPasswordRequest(payload: {
+  email: string;
+  token: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<string> {
+  const { data } = await api.post<ApiSuccessResponse<null>>("/auth/reset-password", {
+    email: payload.email.trim().toLowerCase(),
+    token: payload.token,
+    password: payload.password,
+    password_confirmation: payload.password_confirmation,
+  });
+  return data.message;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -103,7 +104,12 @@ export default function LoginPage() {
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input id="password" type="password" autoComplete="current-password" {...form.register("password")} />
                 {form.formState.errors.password ? (
                   <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
