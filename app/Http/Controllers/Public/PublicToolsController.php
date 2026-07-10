@@ -24,6 +24,18 @@ class PublicToolsController extends Controller
         return view('public.tools', [
             'dashboardLoginUrl' => $dashboardBaseUrl.'/web_dashboard/login',
             'dashboardUrl' => $dashboardBaseUrl.'/web_dashboard',
+            'signUpUrl' => 'mailto:sales@veravalonline.com?subject=VendorPulse%20Sign%20Up',
+        ]);
+    }
+
+    public function privacy(): View
+    {
+        $dashboardBaseUrl = rtrim((string) config('vendorpulse.web_dashboard_url'), '/');
+
+        return view('public.privacy', [
+            'dashboardLoginUrl' => $dashboardBaseUrl.'/web_dashboard/login',
+            'dashboardUrl' => $dashboardBaseUrl.'/web_dashboard',
+            'signUpUrl' => 'mailto:sales@veravalonline.com?subject=VendorPulse%20Sign%20Up',
         ]);
     }
 

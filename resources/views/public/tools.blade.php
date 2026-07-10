@@ -215,6 +215,8 @@
         <header>
             <div class="brand">Vendor<span>Pulse</span></div>
             <nav class="nav">
+                <a class="btn btn-outline" href="/privacy">Privacy Policy</a>
+                <a class="btn btn-outline" href="{{ $signUpUrl }}">Sign Up</a>
                 <a class="btn btn-outline" href="{{ $dashboardLoginUrl }}">Sign in</a>
                 <a class="btn btn-primary" href="{{ $dashboardUrl }}">Open dashboard</a>
             </nav>
@@ -289,6 +291,8 @@
 
         <footer>
             Powered by VendorPulse · Free public DNS tool ·
+            <a href="/privacy">Privacy Policy</a> ·
+            <a href="{{ $signUpUrl }}">Sign Up</a> ·
             <a href="{{ $dashboardUrl }}">web dashboard</a>
         </footer>
     </div>

@@ -85,6 +85,7 @@ export default function UrlCheckerPage() {
 
   const [quickTargetUrl, setQuickTargetUrl] = useState("");
   const [maxLinks, setMaxLinks] = useState("200");
+  const [quickAuthorized, setQuickAuthorized] = useState(false);
 
   const [auditTargetUrl, setAuditTargetUrl] = useState("");
   const [maxPages, setMaxPages] = useState("50");
@@ -115,10 +116,15 @@ export default function UrlCheckerPage() {
       toast.error("Target URL is required");
       return;
     }
+    if (!quickAuthorized) {
+      toast.error("Confirm you are authorized to crawl this domain");
+      return;
+    }
     mutation.mutate({
       target_url: quickTargetUrl.trim(),
       mode: "quick",
       max_links: Number(maxLinks) || 200,
+      authorized: true,
     });
   };
 
@@ -202,7 +208,7 @@ export default function UrlCheckerPage() {
                 <div className="flex items-end">
                   <Button
                     onClick={runQuickScan}
-                    disabled={mutation.isPending || quickTargetUrl.trim() === ""}
+                    disabled={mutation.isPending || quickTargetUrl.trim() === "" || !quickAuthorized}
                     className="w-full md:w-auto"
                   >
                     <Play className="size-4" />
@@ -210,6 +216,15 @@ export default function UrlCheckerPage() {
                   </Button>
                 </div>
               </div>
+              <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 rounded border-input"
+                  checked={quickAuthorized}
+                  onChange={(e) => setQuickAuthorized(e.target.checked)}
+                />
+                <span>I confirm I own this domain or have permission to crawl it.</span>
+              </label>
             </CardContent>
           </Card>
         </TabsContent>

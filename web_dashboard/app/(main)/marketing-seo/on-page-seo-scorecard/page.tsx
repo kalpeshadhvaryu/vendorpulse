@@ -497,6 +497,7 @@ export default function OnPageSeoScorecardPage() {
   const [activeTab, setActiveTab] = useState<"quick" | "site">("quick");
 
   const [quickTargetUrl, setQuickTargetUrl] = useState("");
+  const [quickAuthorized, setQuickAuthorized] = useState(false);
   const [siteTargetUrl, setSiteTargetUrl] = useState("");
   const [maxPages, setMaxPages] = useState("30");
   const [maxDepth, setMaxDepth] = useState("3");
@@ -522,9 +523,14 @@ export default function OnPageSeoScorecardPage() {
       toast.error("Target URL is required");
       return;
     }
+    if (!quickAuthorized) {
+      toast.error("Confirm you are authorized to crawl this domain");
+      return;
+    }
     mutation.mutate({
       target_url: quickTargetUrl.trim(),
       mode: "quick",
+      authorized: true,
     });
   };
 
@@ -575,7 +581,7 @@ export default function OnPageSeoScorecardPage() {
                 Check title, meta, headings, technical tags, content signals, and social metadata on a single page.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <div className="grid gap-2">
                   <Label htmlFor="quick-target-url">Target URL</Label>
@@ -589,7 +595,7 @@ export default function OnPageSeoScorecardPage() {
                 <div className="flex items-end">
                   <Button
                     type="button"
-                    disabled={mutation.isPending || quickTargetUrl.trim() === ""}
+                    disabled={mutation.isPending || quickTargetUrl.trim() === "" || !quickAuthorized}
                     onClick={runQuickAudit}
                     className="w-full md:w-auto"
                   >
@@ -598,6 +604,15 @@ export default function OnPageSeoScorecardPage() {
                   </Button>
                 </div>
               </div>
+              <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 rounded border-input"
+                  checked={quickAuthorized}
+                  onChange={(event) => setQuickAuthorized(event.target.checked)}
+                />
+                <span>I confirm I own this domain or have permission to crawl it.</span>
+              </label>
             </CardContent>
           </Card>
         </TabsContent>

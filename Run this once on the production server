@@ -91,7 +91,7 @@ open site
 hard refresh (Ctrl+Shift+R)
 verify changed UI/API behavior
 
-Quick One-Block Production Command
+Quick One-Block Production Command - Working
 cd /var/www/vendorpulse && git pull origin kalpesh && \
 cd /var/www/vendorpulse/web_dashboard && git pull origin kalpesh && \
 cd /var/www/vendorpulse && bash vpproduction.sh deploy && bash vpproduction.sh verify && \
