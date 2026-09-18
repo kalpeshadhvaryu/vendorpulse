@@ -46,6 +46,11 @@ Schedule::command('vapt:speedtest-alerts')
     ->name('vapt:speedtest-alerts')
     ->withoutOverlapping(10);
 
+Schedule::command('monitoring:prune-logs')
+    ->dailyAt('03:20')
+    ->name('site-monitoring:prune-logs')
+    ->withoutOverlapping(120);
+
 Artisan::command('monitoring:reassign-check
     {checkId : Monitoring check UUID}
     {fromOrgId : Current organization UUID}

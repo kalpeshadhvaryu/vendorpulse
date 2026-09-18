@@ -57,23 +57,46 @@ class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
                 ->paginate($perPage);
         }
 
+        // Window over lightweight columns only (no JSON meta), then hydrate full rows for the page.
         $windowed = MonitoringLog::query()
-            ->selectRaw('monitoring_logs.*, LAG(status) OVER (ORDER BY created_at ASC, id ASC) as prev_status')
+            ->selectRaw(
+                'id, created_at, LOWER(status) as curr_status, '.
+                'LAG(LOWER(status)) OVER (ORDER BY created_at ASC, id ASC) as prev_status'
+            )
             ->where('monitoring_check_id', $check->id)
             ->where('organization_id', $check->organization_id);
 
         $this->applyLogFilters($windowed, $filters);
         $windowed->whereIn(DB::raw('LOWER(status)'), ['ok', 'failed']);
 
-        $query = DB::query()->fromSub($windowed, 'logs_with_prev')
+        $changed = DB::query()->fromSub($windowed, 'logs_with_prev')
             ->where(function (QueryBuilder $q): void {
                 $q->whereNull('prev_status')
-                    ->orWhereRaw("LOWER(COALESCE(status, '')) <> LOWER(COALESCE(prev_status, ''))");
+                    ->orWhereColumn('curr_status', '<>', 'prev_status');
             })
+            ->select(['id', 'created_at'])
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
-        return $query->paginate($perPage);
+        $paginator = $changed->paginate($perPage);
+        $ids = collect($paginator->items())->pluck('id')->filter()->values();
+
+        if ($ids->isEmpty()) {
+            $paginator->setCollection(collect());
+
+            return $paginator;
+        }
+
+        $logsById = MonitoringLog::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $paginator->setCollection(
+            $ids->map(static fn ($id) => $logsById->get($id))->filter()->values()
+        );
+
+        return $paginator;
     }
 
     /**
@@ -106,9 +129,15 @@ class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
         }
     }
 
-    public function logsBetween(MonitoringCheck $check, Carbon $from, Carbon $to, int $limit = 10000): Collection
-    {
+    public function logsBetween(
+        MonitoringCheck $check,
+        Carbon $from,
+        Carbon $to,
+        int $limit = 10000,
+        array $columns = ['id', 'status', 'created_at'],
+    ): Collection {
         return MonitoringLog::query()
+            ->select($columns)
             ->where('monitoring_check_id', $check->id)
             ->where('organization_id', $check->organization_id)
             ->where('created_at', '>=', $from)
@@ -118,9 +147,13 @@ class MonitoringCheckRepository implements MonitoringCheckRepositoryInterface
             ->get();
     }
 
-    public function latestLogBefore(MonitoringCheck $check, Carbon $moment): ?MonitoringLog
-    {
+    public function latestLogBefore(
+        MonitoringCheck $check,
+        Carbon $moment,
+        array $columns = ['id', 'status', 'created_at'],
+    ): ?MonitoringLog {
         return MonitoringLog::query()
+            ->select($columns)
             ->where('monitoring_check_id', $check->id)
             ->where('organization_id', $check->organization_id)
             ->where('created_at', '<', $moment)

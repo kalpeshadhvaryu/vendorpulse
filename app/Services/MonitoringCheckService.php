@@ -170,7 +170,13 @@ class MonitoringCheckService
      */
     public function summarizeServerMetrics(MonitoringCheck $check, Carbon $from, Carbon $to): array
     {
-        $logs = $this->monitoringChecks->logsBetween($check, $from, $to, 10000);
+        $logs = $this->monitoringChecks->logsBetween(
+            $check,
+            $from,
+            $to,
+            10000,
+            ['id', 'created_at', 'meta'],
+        );
 
         $keys = [
             'load_1m',

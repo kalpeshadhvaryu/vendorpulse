@@ -61,6 +61,7 @@ export default function MonitoringCheckHistoryPage() {
   const [downtimeOnly, setDowntimeOnly] = useState(false);
   const [changesOnly, setChangesOnly] = useState(true);
   const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState("summary");
 
   const logParams = useMemo(() => {
     const p: Record<string, string> = {
@@ -89,10 +90,12 @@ export default function MonitoringCheckHistoryPage() {
     enabled: Boolean(checkId),
   });
 
+  const needsLogs = activeTab === "logs" || activeTab === "failed";
+
   const logsQuery = useQuery({
     queryKey: queryKeys.monitoringCheckLogs(checkId, logParams),
     queryFn: () => fetchMonitoringLogs(checkId, logParams),
-    enabled: Boolean(checkId),
+    enabled: Boolean(checkId) && needsLogs,
     placeholderData: keepPreviousData,
   });
 
@@ -105,7 +108,7 @@ export default function MonitoringCheckHistoryPage() {
   const serverAnalyticsQuery = useQuery({
     queryKey: queryKeys.monitoringServerAnalytics(checkId, summaryParams),
     queryFn: () => fetchMonitoringServerAnalytics(checkId, summaryParams),
-    enabled: Boolean(checkId) && checkQuery.data?.type === "server",
+    enabled: Boolean(checkId) && checkQuery.data?.type === "server" && activeTab === "server",
   });
 
   function applyPreset(days: number) {
@@ -151,9 +154,11 @@ export default function MonitoringCheckHistoryPage() {
     hasVisibleLogIssues ||
     (summaryQuery.data?.downtime_incidents ?? 0) > 0 ||
     (summaryQuery.data?.duration_seconds.degraded ?? 0) > 0;
-  const failedRowCount = (logsQuery.data?.items ?? []).filter((r) =>
-    ["failed", "error"].includes(r.status.toLowerCase()),
-  ).length;
+  const failedRowCount = needsLogs
+    ? (logsQuery.data?.items ?? []).filter((r) =>
+        ["failed", "error"].includes(r.status.toLowerCase()),
+      ).length
+    : (summaryQuery.data?.downtime_incidents ?? 0);
   const failedTabLabel = hasWindowIssues
     ? `Failed (${failedRowCount})`
     : "Failed";
@@ -405,7 +410,7 @@ export default function MonitoringCheckHistoryPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="summary" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="h-auto flex-wrap justify-start gap-2">
           <TabsTrigger value="summary">
             Uptime Summary

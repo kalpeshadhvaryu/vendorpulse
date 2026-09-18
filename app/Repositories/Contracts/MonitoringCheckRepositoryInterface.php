@@ -22,11 +22,25 @@ interface MonitoringCheckRepositoryInterface
     public function paginateLogsForCheck(MonitoringCheck $check, int $perPage = 30, array $filters = []): LengthAwarePaginator;
 
     /**
+     * @param  list<string>  $columns
      * @return Collection<int, MonitoringLog>
      */
-    public function logsBetween(MonitoringCheck $check, Carbon $from, Carbon $to, int $limit = 10000): Collection;
+    public function logsBetween(
+        MonitoringCheck $check,
+        Carbon $from,
+        Carbon $to,
+        int $limit = 10000,
+        array $columns = ['id', 'status', 'created_at'],
+    ): Collection;
 
-    public function latestLogBefore(MonitoringCheck $check, Carbon $moment): ?MonitoringLog;
+    /**
+     * @param  list<string>  $columns
+     */
+    public function latestLogBefore(
+        MonitoringCheck $check,
+        Carbon $moment,
+        array $columns = ['id', 'status', 'created_at'],
+    ): ?MonitoringLog;
 
     public function find(string $id): ?MonitoringCheck;
 

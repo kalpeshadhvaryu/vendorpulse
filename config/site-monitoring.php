@@ -38,6 +38,11 @@ return [
      */
     'http_log_body_max_bytes' => (int) env('SITE_MONITORING_HTTP_LOG_BODY_MAX_BYTES', 4096),
 
+    /**
+     * Delete monitoring_logs older than this many days (scheduled prune).
+     */
+    'log_retention_days' => (int) env('SITE_MONITORING_LOG_RETENTION_DAYS', 90),
+
     /** Max response header lines stored in meta (name => value). */
     'http_log_header_max_lines' => (int) env('SITE_MONITORING_HTTP_LOG_HEADER_MAX_LINES', 20),
 

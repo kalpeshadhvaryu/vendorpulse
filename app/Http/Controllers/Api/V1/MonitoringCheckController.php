@@ -54,16 +54,9 @@ class MonitoringCheckController extends BaseApiController
         if (! empty($validated['status'])) {
             $filters['status'] = $validated['status'];
         }
-        if (! empty($validated['from_at'])) {
-            $filters['from'] = Carbon::parse($validated['from_at']);
-        } elseif (! empty($validated['from'])) {
-            $filters['from'] = Carbon::parse($validated['from'])->startOfDay();
-        }
-        if (! empty($validated['to_at'])) {
-            $filters['to'] = Carbon::parse($validated['to_at']);
-        } elseif (! empty($validated['to'])) {
-            $filters['to'] = Carbon::parse($validated['to'])->endOfDay();
-        }
+        [$from, $to] = $this->resolveLogsWindow($validated);
+        $filters['from'] = $from;
+        $filters['to'] = $to;
         if (! empty($validated['search'])) {
             $filters['search'] = trim((string) $validated['search']);
         }
@@ -81,17 +74,7 @@ class MonitoringCheckController extends BaseApiController
 
     public function logSummary(MonitoringLogsWindowRequest $request, MonitoringCheck $monitoringCheck): JsonResponse
     {
-        $validated = $request->validated();
-        $from = isset($validated['from_at'])
-            ? Carbon::parse($validated['from_at'])
-            : (isset($validated['from'])
-                ? Carbon::parse($validated['from'])->startOfDay()
-                : now()->subDays(7)->startOfDay());
-        $to = isset($validated['to_at'])
-            ? Carbon::parse($validated['to_at'])
-            : (isset($validated['to'])
-                ? Carbon::parse($validated['to'])->endOfDay()
-                : now()->endOfSecond());
+        [$from, $to] = $this->resolveLogsWindow($request->validated());
 
         $summary = $this->monitoringChecks->summarizeLogsWindow($monitoringCheck, $from, $to);
 
@@ -100,17 +83,7 @@ class MonitoringCheckController extends BaseApiController
 
     public function serverAnalytics(MonitoringLogsWindowRequest $request, MonitoringCheck $monitoringCheck): JsonResponse
     {
-        $validated = $request->validated();
-        $from = isset($validated['from_at'])
-            ? Carbon::parse($validated['from_at'])
-            : (isset($validated['from'])
-                ? Carbon::parse($validated['from'])->startOfDay()
-                : now()->subDays(7)->startOfDay());
-        $to = isset($validated['to_at'])
-            ? Carbon::parse($validated['to_at'])
-            : (isset($validated['to'])
-                ? Carbon::parse($validated['to'])->endOfDay()
-                : now()->endOfSecond());
+        [$from, $to] = $this->resolveLogsWindow($request->validated());
 
         if (strtolower((string) $monitoringCheck->type) !== 'server') {
             return ApiResponse::success([
@@ -296,5 +269,39 @@ class MonitoringCheckController extends BaseApiController
             array_merge($summary, $updated),
             'Monitoring check reassigned successfully.'
         );
+    }
+
+    /**
+     * Resolve and clamp the history window to the retention period.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function resolveLogsWindow(array $validated): array
+    {
+        $retentionDays = max(1, (int) config('site-monitoring.log_retention_days', 90));
+        $earliest = now()->subDays($retentionDays)->startOfDay();
+
+        $from = isset($validated['from_at'])
+            ? Carbon::parse($validated['from_at'])
+            : (isset($validated['from'])
+                ? Carbon::parse($validated['from'])->startOfDay()
+                : now()->subDays(7)->startOfDay());
+
+        $to = isset($validated['to_at'])
+            ? Carbon::parse($validated['to_at'])
+            : (isset($validated['to'])
+                ? Carbon::parse($validated['to'])->endOfDay()
+                : now()->endOfSecond());
+
+        if ($from->lt($earliest)) {
+            $from = $earliest->copy();
+        }
+
+        if ($to->lt($from)) {
+            $to = $from->copy()->endOfDay();
+        }
+
+        return [$from, $to];
     }
 }
