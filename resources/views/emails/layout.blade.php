@@ -12,7 +12,13 @@
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
                 <tr>
                     <td style="padding:28px 28px 12px;text-align:center;">
-                        <div style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:12px;background:#4f46e5;color:#ffffff;font-weight:700;font-size:16px;">VP</div>
+                        <img
+                            src="{{ rtrim((string) config('app.url'), '/') }}/vendorpulse-logo.png"
+                            width="56"
+                            height="56"
+                            alt="{{ $appName ?? config('app.name', 'VendorPulse') }}"
+                            style="display:inline-block;border-radius:12px;border:0;"
+                        >
                         <p style="margin:12px 0 0;font-size:18px;font-weight:600;">{{ $appName ?? config('app.name', 'VendorPulse') }}</p>
                     </td>
                 </tr>

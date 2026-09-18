@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>VendorPulse — Free DNS &amp; Email Check</title>
     <meta name="description" content="Free DNS, MX, SPF, and DMARC lookup for any public domain. Powered by VendorPulse.">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/vendorpulse-logo.png">
     <style>
         :root {
             color-scheme: light;
@@ -43,7 +45,24 @@
             margin-bottom: 40px;
         }
 
-        .brand { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; }
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.125rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text);
+            text-decoration: none;
+        }
+        .brand:hover { text-decoration: none; }
+        .brand img {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: block;
+            object-fit: cover;
+        }
         .brand span { color: var(--primary); }
 
         .nav { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -213,7 +232,10 @@
 <body>
     <div class="wrap">
         <header>
-            <div class="brand">Vendor<span>Pulse</span></div>
+            <a class="brand" href="/">
+                <img src="/vendorpulse-logo.png" width="36" height="36" alt="VendorPulse">
+                Vendor<span>Pulse</span>
+            </a>
             <nav class="nav">
                 <a class="btn btn-outline" href="/privacy">Privacy Policy</a>
                 <a class="btn btn-outline" href="{{ $signUpUrl }}">Sign Up</a>

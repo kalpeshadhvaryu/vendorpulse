@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const schema = z
   .object({
@@ -139,10 +140,10 @@ export default function ResetPasswordPage() {
       </div>
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
         <div className="mb-10 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/25">
-            VP
+          <div className="mx-auto mb-4 flex justify-center">
+            <BrandLogo size={88} priority className="rounded-2xl shadow-lg shadow-black/20" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">VendorPulse</h1>
+          <h1 className="sr-only">VendorPulse</h1>
         </div>
         <Suspense
           fallback={

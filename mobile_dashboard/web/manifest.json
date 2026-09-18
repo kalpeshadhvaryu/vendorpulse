@@ -1,11 +1,11 @@
 {
-    "name": "mobile_dashboard",
-    "short_name": "mobile_dashboard",
+    "name": "VendorPulse",
+    "short_name": "VendorPulse",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "VendorPulse mobile operations dashboard.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { getCategoryLinksForUser, rootLinks } from "@/lib/navigation/main-menu";
 import { collectNavHrefs, isNavHrefActive } from "@/lib/navigation/route-match";
 import { useAuthStore } from "@/stores/auth-store";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname() ?? "/";
@@ -179,9 +180,7 @@ export function SidebarNav() {
   return (
     <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-card lg:flex lg:flex-col">
       <div className="flex h-14 items-center gap-2 border-b border-border/60 px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-          VP
-        </div>
+        <BrandLogo size={36} className="rounded-md" />
         <div className="flex flex-col leading-tight">
           <span className="text-sm font-semibold">VendorPulse</span>
           <span className="text-[11px] text-muted-foreground">Operations</span>
@@ -207,7 +206,10 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="border-b border-border/60 px-4 py-3 text-left">
-          <SheetTitle className="text-base">VendorPulse</SheetTitle>
+          <SheetTitle className="flex items-center gap-2 text-base">
+            <BrandLogo size={28} className="rounded-md" />
+            VendorPulse
+          </SheetTitle>
         </SheetHeader>
         <NavLinks onNavigate={() => setOpen(false)} />
       </SheetContent>

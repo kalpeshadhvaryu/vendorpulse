@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   // Crucial for maintaining clean folder proxy matching behind Nginx
   trailingSlash: true, 
   outputFileTracingRoot: process.cwd(),
+  env: {
+    NEXT_PUBLIC_BASE_PATH: "/web_dashboard",
+  },
   
   async redirects() {
     // 👍 Keep the redirect active on your local machine, but completely bypass it on production

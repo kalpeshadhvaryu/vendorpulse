@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Activity, ArrowRight, BellRing, Radar, Server, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { Activity, ArrowRight, BellRing, Radar, Server, Sparkles, Zap } from "lucide-react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const signalBars = [22, 48, 34, 76, 58, 92, 64, 88, 52, 70, 40, 84];
 
@@ -26,9 +27,7 @@ export default function HomePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-400/25 bg-slate-950/80 shadow-[0_0_30px_rgba(34,211,238,0.18)]">
-              <ShieldCheck className="h-5 w-5 text-cyan-300" />
-            </div>
+            <BrandLogo size={44} priority className="rounded-2xl border border-cyan-400/25 shadow-[0_0_30px_rgba(34,211,238,0.18)]" />
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">VendorPulse</p>
               <p className="text-sm text-slate-300">Monitoring SaaS for vendors, invoices, and renewals</p>
@@ -210,9 +209,7 @@ export default function HomePage() {
           <div className="grid gap-8 border-b border-white/10 pb-8 lg:grid-cols-[1.35fr_repeat(3,minmax(0,1fr))]">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-200">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
+                <BrandLogo size={40} className="rounded-xl border border-cyan-300/30" />
                 <div>
                   <p className="text-sm font-semibold text-white">Vendor Pulse</p>
                   <p className="text-xs text-slate-400">VeravalOnline Private Limited</p>
