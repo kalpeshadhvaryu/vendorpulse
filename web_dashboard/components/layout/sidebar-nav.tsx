@@ -179,10 +179,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 export function SidebarNav() {
   return (
     <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-card lg:flex lg:flex-col">
-      <div className="flex h-14 items-center gap-2 border-b border-border/60 px-4">
-        <BrandLogo size={36} className="rounded-md" />
-        <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold">VendorPulse</span>
+      <div className="flex h-14 items-center gap-2.5 border-b border-border/60 px-4">
+        <BrandLogo size={34} variant="auto" />
+        <div className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-semibold">VendorPulse</span>
           <span className="text-[11px] text-muted-foreground">Operations</span>
         </div>
       </div>
@@ -190,7 +190,30 @@ export function SidebarNav() {
         <NavLinks />
       </ScrollArea>
       <Separator />
-      <div className="p-3 text-[11px] text-muted-foreground">API v1 · Laravel Sanctum</div>
+      <div className="space-y-1 p-3 text-[11px] text-muted-foreground">
+        <div>
+          Powered by{" "}
+          <a
+            href="https://veravalonline.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline-offset-2 hover:underline"
+          >
+            VeravalOnline Private Limited
+          </a>
+        </div>
+        <div>
+          Hosted by{" "}
+          <a
+            href="https://voguehosting.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline-offset-2 hover:underline"
+          >
+            Vogue Hosting
+          </a>
+        </div>
+      </div>
     </aside>
   );
 }
@@ -207,7 +230,7 @@ export function MobileNav() {
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="border-b border-border/60 px-4 py-3 text-left">
           <SheetTitle className="flex items-center gap-2 text-base">
-            <BrandLogo size={28} className="rounded-md" />
+            <BrandLogo size={28} variant="auto" />
             VendorPulse
           </SheetTitle>
         </SheetHeader>

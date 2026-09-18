@@ -247,7 +247,11 @@
         </article>
 
         <footer>
-            Powered by VendorPulse ·
+            Powered by
+            <a href="https://veravalonline.com" target="_blank" rel="noopener noreferrer"> VeravalOnline Private Limited</a>
+            · Hosted by
+            <a href="https://voguehosting.com" target="_blank" rel="noopener noreferrer"> Vogue Hosting</a>
+            ·
             <a href="/">Home</a> ·
             <a href="/privacy">Privacy Policy</a> ·
             <a href="{{ $dashboardUrl }}">web dashboard</a>

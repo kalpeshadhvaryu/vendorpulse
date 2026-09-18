@@ -234,9 +234,108 @@
             border-radius: 10px;
             padding: 12px 14px;
             margin-bottom: 10px;
+            border-left: 4px solid var(--border);
+            background: #fff;
         }
+        .finding.status-pass { border-left-color: var(--pass); }
+        .finding.status-warning { border-left-color: var(--warn); }
+        .finding.status-fail { border-left-color: var(--fail); }
         .finding h3 { margin: 0 0 4px; font-size: 0.9375rem; }
         .finding p { margin: 0; font-size: 0.8125rem; color: var(--muted); }
+        .finding-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .finding-key {
+            font-size: 0.6875rem;
+            color: var(--muted);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+        .finding-fix {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            font-size: 0.8125rem;
+            color: #0f172a;
+        }
+        .evidence {
+            margin: 10px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+        .evidence li {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            padding: 4px 0;
+            word-break: break-word;
+            border-bottom: 1px dashed #f1f5f9;
+        }
+        .evidence li:last-child { border-bottom: none; }
+
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+            align-items: center;
+        }
+        .filter-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--muted);
+        }
+        .filter-btn.active {
+            background: #0f172a;
+            border-color: #0f172a;
+            color: #fff;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            margin: 18px 0 8px;
+            letter-spacing: -0.01em;
+        }
+        .section-title:first-child { margin-top: 0; }
+        .empty-note { color: var(--muted); font-size: 0.875rem; margin: 0; }
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.8rem;
+            word-break: break-all;
+        }
+        .match-yes { color: var(--pass); font-weight: 600; }
+        .match-no { color: var(--warn); font-weight: 600; }
+        .kv-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .kv {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #fafafa;
+        }
+        .kv .label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .kv .value {
+            margin-top: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            word-break: break-word;
+        }
 
         .cta {
             margin-top: 28px;
@@ -274,6 +373,7 @@
             .scan-form { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: repeat(2, 1fr); }
             .whois-grid { grid-template-columns: 1fr; }
+            .kv-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -343,12 +443,18 @@
                 <div class="tabs">
                     <button type="button" class="tab active" data-tab="findings">Findings</button>
                     <button type="button" class="tab" data-tab="mx">MX records</button>
+                    <button type="button" class="tab" data-tab="email">Email auth</button>
                     <button type="button" class="tab" data-tab="records">DNS records</button>
+                    <button type="button" class="tab" data-tab="nameservers">Nameservers</button>
+                    <button type="button" class="tab" data-tab="propagation">Propagation</button>
                 </div>
 
                 <div id="panel-findings" class="panel active"></div>
                 <div id="panel-mx" class="panel"></div>
+                <div id="panel-email" class="panel"></div>
                 <div id="panel-records" class="panel"></div>
+                <div id="panel-nameservers" class="panel"></div>
+                <div id="panel-propagation" class="panel"></div>
             </div>
 
             <div class="cta">
@@ -377,7 +483,11 @@
         </section>
 
         <footer>
-            Powered by VendorPulse · Free public DNS &amp; WHOIS tool ·
+            Powered by
+            <a href="https://veravalonline.com" target="_blank" rel="noopener noreferrer"> VeravalOnline Private Limited</a>
+            · Hosted by
+            <a href="https://voguehosting.com" target="_blank" rel="noopener noreferrer"> Vogue Hosting</a>
+            · Free public DNS &amp; WHOIS tool ·
             <a href="/privacy">Privacy Policy</a> ·
             <a href="{{ $signUpUrl }}">Sign Up</a> ·
             <a href="{{ $dashboardUrl }}">web dashboard</a>
@@ -399,7 +509,7 @@
         }
 
         function escapeHtml(value) {
-            return String(value)
+            return String(value ?? '')
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
@@ -413,57 +523,252 @@
             return escapeHtml(d.toUTCString());
         }
 
-        function renderFindings(checks) {
-            const panel = document.getElementById('panel-findings');
-            if (!checks.length) {
-                panel.innerHTML = '<p style="color:#64748b">No findings returned.</p>';
-                return;
+        function emptyNote(text) {
+            return `<p class="empty-note">${escapeHtml(text)}</p>`;
+        }
+
+        function recordTable(headers, rowsHtml) {
+            return `
+                <table>
+                    <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            `;
+        }
+
+        function stringRows(values) {
+            if (!values || !values.length) return emptyNote('None');
+            return recordTable(['Value'], values.map((v) => `
+                <tr><td class="mono">${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v))}</td></tr>
+            `).join(''));
+        }
+
+        function parseMx(entry) {
+            if (typeof entry === 'object' && entry) {
+                return {
+                    priority: Number(entry.pri ?? entry.priority ?? 0),
+                    host: String(entry.target ?? entry.host ?? entry.exchange ?? JSON.stringify(entry)),
+                };
             }
-            panel.innerHTML = checks.map((item) => `
-                <article class="finding">
-                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">
-                        <h3>${item.title}</h3>
-                        ${badge(item.status)}
-                    </div>
-                    <p>${item.explanation}</p>
-                    ${item.suggestion ? `<p style="margin-top:8px;color:#0f172a;">Fix: ${item.suggestion}</p>` : ''}
-                </article>
-            `).join('');
+            const text = String(entry);
+            const match = text.match(/^(.*?)\s*\(priority\s+(\d+)\)\s*$/i);
+            if (match) {
+                return { host: match[1].trim(), priority: Number(match[2]) };
+            }
+            return { host: text, priority: null };
+        }
+
+        function extractSpf(txtRecords) {
+            return (txtRecords || []).filter((t) => /^v=spf1\b/i.test(String(t)));
+        }
+
+        let cachedChecks = [];
+
+        function statusRank(status) {
+            if (status === 'fail') return 0;
+            if (status === 'warning') return 1;
+            return 2;
+        }
+
+        function renderFindings(checks, filter = 'all') {
+            const panel = document.getElementById('panel-findings');
+            cachedChecks = Array.isArray(checks) ? checks.slice() : [];
+            const sorted = cachedChecks.slice().sort((a, b) => statusRank(a.status) - statusRank(b.status));
+            const filtered = filter === 'all' ? sorted : sorted.filter((c) => c.status === filter);
+
+            const counts = {
+                all: cachedChecks.length,
+                fail: cachedChecks.filter((c) => c.status === 'fail').length,
+                warning: cachedChecks.filter((c) => c.status === 'warning').length,
+                pass: cachedChecks.filter((c) => c.status === 'pass').length,
+            };
+
+            const filterBar = `
+                <div class="filter-bar" id="findings-filter">
+                    ${['all', 'fail', 'warning', 'pass'].map((key) => `
+                        <button type="button" class="filter-btn ${filter === key ? 'active' : ''}" data-filter="${key}">
+                            ${key === 'all' ? 'All' : key.charAt(0).toUpperCase() + key.slice(1)} (${counts[key]})
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+
+            if (!filtered.length) {
+                panel.innerHTML = filterBar + emptyNote('No findings for this filter.');
+            } else {
+                panel.innerHTML = filterBar + filtered.map((item) => `
+                    <article class="finding status-${escapeHtml(item.status || 'fail')}">
+                        <div class="finding-meta">
+                            ${badge(item.status)}
+                            ${item.severity ? `<span class="chip">${escapeHtml(item.severity)}</span>` : ''}
+                            ${item.key ? `<span class="finding-key">${escapeHtml(item.key)}</span>` : ''}
+                        </div>
+                        <h3>${escapeHtml(item.title || 'Finding')}</h3>
+                        <p>${escapeHtml(item.explanation || '')}</p>
+                        ${item.suggestion ? `<div class="finding-fix"><strong>Fix:</strong> ${escapeHtml(item.suggestion)}</div>` : ''}
+                        ${(item.evidence || []).length ? `
+                            <ul class="evidence">
+                                ${item.evidence.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                    </article>
+                `).join('');
+            }
+
+            panel.querySelectorAll('.filter-btn').forEach((btn) => {
+                btn.addEventListener('click', () => renderFindings(cachedChecks, btn.dataset.filter));
+            });
         }
 
         function renderMx(records) {
             const panel = document.getElementById('panel-mx');
-            const mx = records.mx || [];
+            const mx = (records.mx || []).map(parseMx)
+                .sort((a, b) => {
+                    if (a.priority === null && b.priority === null) return a.host.localeCompare(b.host);
+                    if (a.priority === null) return 1;
+                    if (b.priority === null) return -1;
+                    return a.priority - b.priority;
+                });
+
             if (!mx.length) {
-                panel.innerHTML = '<p style="color:#64748b">No MX records found.</p>';
+                panel.innerHTML = emptyNote('No MX records found. This may be fine if the domain does not receive email.');
                 return;
             }
+
             panel.innerHTML = `
-                <table>
-                    <thead><tr><th>MX record</th></tr></thead>
-                    <tbody>
-                        ${mx.map((row) => `<tr><td><code style="font-size:0.85rem;word-break:break-all;">${typeof row === 'string' ? row : (row.target ?? row.host ?? JSON.stringify(row))}</code></td></tr>`).join('')}
-                    </tbody>
-                </table>
+                <p class="empty-note" style="margin-bottom:12px;">
+                    Lower priority number = preferred mail server. ${mx.length} record${mx.length === 1 ? '' : 's'} found.
+                </p>
+                ${recordTable(['Priority', 'Mail server'], mx.map((row, index) => `
+                    <tr>
+                        <td>${row.priority === null ? '—' : escapeHtml(String(row.priority))}</td>
+                        <td class="mono">${escapeHtml(row.host)}${index === 0 && row.priority !== null ? ' <span class="chip">primary</span>' : ''}</td>
+                    </tr>
+                `).join(''))}
+            `;
+        }
+
+        function renderEmail(records) {
+            const panel = document.getElementById('panel-email');
+            const spf = extractSpf(records.txt || []);
+            const dmarc = records.dmarc || [];
+            const otherTxt = (records.txt || []).filter((t) => !/^v=spf1\b/i.test(String(t)));
+
+            panel.innerHTML = `
+                <h3 class="section-title">SPF</h3>
+                ${spf.length ? stringRows(spf) : emptyNote('No SPF record found.')}
+                <h3 class="section-title">DMARC</h3>
+                ${dmarc.length ? stringRows(dmarc) : emptyNote('No DMARC record found at _dmarc.')}
+                <h3 class="section-title">Other TXT records</h3>
+                ${otherTxt.length ? stringRows(otherTxt) : emptyNote('No additional TXT records.')}
             `;
         }
 
         function renderRecords(records) {
             const panel = document.getElementById('panel-records');
-            const sections = ['a', 'aaaa', 'ns', 'txt', 'cname', 'dmarc'];
-            panel.innerHTML = sections.map((key) => {
-                const rows = records[key] || [];
-                const label = key.toUpperCase();
-                if (!rows.length) {
-                    return `<h3 style="font-size:0.9rem;margin:16px 0 8px;">${label}</h3><p style="color:#64748b;font-size:0.875rem;">None</p>`;
-                }
+            const sections = [
+                { key: 'a', label: 'A (IPv4)' },
+                { key: 'aaaa', label: 'AAAA (IPv6)' },
+                { key: 'cname', label: 'CNAME' },
+                { key: 'soa', label: 'SOA' },
+                { key: 'caa', label: 'CAA' },
+                { key: 'dnskey', label: 'DNSKEY (DNSSEC)' },
+            ];
+
+            const www = records.www || {};
+            const wwwBlocks = [
+                ['WWW A', www.a || []],
+                ['WWW AAAA', www.aaaa || []],
+                ['WWW CNAME', www.cname || []],
+            ];
+
+            panel.innerHTML = sections.map(({ key, label }) => `
+                <h3 class="section-title">${escapeHtml(label)}</h3>
+                ${stringRows(records[key] || [])}
+            `).join('') + `
+                <h3 class="section-title">WWW hostname</h3>
+                ${wwwBlocks.map(([label, values]) => `
+                    <h3 class="section-title" style="font-size:0.8rem;color:var(--muted);">${escapeHtml(label)}</h3>
+                    ${stringRows(values)}
+                `).join('')}
+            `;
+        }
+
+        function renderNameservers(records) {
+            const panel = document.getElementById('panel-nameservers');
+            const zoneNs = records.ns || [];
+            const parentNs = records.parent_delegation_ns || [];
+            const hostRes = records.nameserver_host_resolution || {};
+
+            const hostRows = Object.keys(hostRes).sort().map((host) => {
+                const info = hostRes[host] || {};
+                const ips = [...(info.a || []), ...(info.aaaa || [])];
                 return `
-                    <h3 style="font-size:0.9rem;margin:16px 0 8px;">${label}</h3>
-                    <table><tbody>
-                        ${rows.map((row) => `<tr><td><code style="font-size:0.8rem;word-break:break-all;">${typeof row === 'string' ? row : JSON.stringify(row)}</code></td></tr>`).join('')}
-                    </tbody></table>
+                    <tr>
+                        <td class="mono">${escapeHtml(host)}</td>
+                        <td class="mono">${ips.length ? ips.map(escapeHtml).join('<br>') : '—'}</td>
+                    </tr>
                 `;
             }).join('');
+
+            panel.innerHTML = `
+                <h3 class="section-title">Zone NS</h3>
+                ${stringRows(zoneNs)}
+                <h3 class="section-title">Parent / registrar delegation NS</h3>
+                ${stringRows(parentNs)}
+                <h3 class="section-title">Nameserver host IPs</h3>
+                ${hostRows
+                    ? recordTable(['Nameserver', 'Resolved IPs'], hostRows)
+                    : emptyNote('No nameserver host resolution data.')}
+            `;
+        }
+
+        function renderPropagation(records, report) {
+            const panel = document.getElementById('panel-propagation');
+            const consensus = records.resolver_consensus || {};
+            const resolvers = report.resolver_nameservers || [];
+            const match = (value) => value
+                ? '<span class="match-yes">Match</span>'
+                : '<span class="match-no">Mismatch</span>';
+
+            panel.innerHTML = `
+                <div class="kv-grid">
+                    <div class="kv">
+                        <div class="label">Scanned at</div>
+                        <div class="value">${formatDate(report.scanned_at)}</div>
+                    </div>
+                    <div class="kv">
+                        <div class="label">Local resolvers</div>
+                        <div class="value mono">${resolvers.length ? resolvers.map(escapeHtml).join(', ') : '—'}</div>
+                    </div>
+                    <div class="kv">
+                        <div class="label">Local vs Google</div>
+                        <div class="value">${match(!!consensus.local_vs_google_match)}</div>
+                    </div>
+                    <div class="kv">
+                        <div class="label">Local vs Cloudflare</div>
+                        <div class="value">${match(!!consensus.local_vs_cloudflare_match)}</div>
+                    </div>
+                </div>
+                <h3 class="section-title">Local A answers</h3>
+                ${stringRows(consensus.local_a || [])}
+                <h3 class="section-title">Google DNS A answers</h3>
+                ${stringRows(consensus.google_a || [])}
+                ${consensus.google_error ? `<p class="empty-note">Google error: ${escapeHtml(consensus.google_error)}</p>` : ''}
+                <h3 class="section-title">Cloudflare DNS A answers</h3>
+                ${stringRows(consensus.cloudflare_a || [])}
+                ${consensus.cloudflare_error ? `<p class="empty-note">Cloudflare error: ${escapeHtml(consensus.cloudflare_error)}</p>` : ''}
+            `;
+        }
+
+        function renderDnsReport(report) {
+            const records = report.records || {};
+            renderFindings(report.checks || []);
+            renderMx(records);
+            renderEmail(records);
+            renderRecords(records);
+            renderNameservers(records);
+            renderPropagation(records, report);
         }
 
         function renderWhois(report) {
@@ -535,10 +840,12 @@
                 document.getElementById('stat-warnings').textContent = report.summary?.warnings ?? 0;
                 document.getElementById('stat-failed').textContent = report.summary?.failed ?? 0;
 
-                renderFindings(report.checks || []);
-                renderMx(report.records || {});
-                renderRecords(report.records || {});
+                renderDnsReport(report);
                 results.classList.remove('hidden');
+                document.querySelectorAll('.tab').forEach((el) => el.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach((el) => el.classList.remove('active'));
+                document.querySelector('.tab[data-tab="findings"]').classList.add('active');
+                document.getElementById('panel-findings').classList.add('active');
                 results.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (error) {
                 errorBox.textContent = error instanceof Error ? error.message : 'Unexpected error.';

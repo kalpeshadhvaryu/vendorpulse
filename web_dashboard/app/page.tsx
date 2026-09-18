@@ -27,10 +27,10 @@ export default function HomePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <BrandLogo size={44} priority className="rounded-2xl border border-cyan-400/25 shadow-[0_0_30px_rgba(34,211,238,0.18)]" />
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">VendorPulse</p>
-              <p className="text-sm text-slate-300">Monitoring SaaS for vendors, invoices, and renewals</p>
+            <BrandLogo size={52} priority className="bg-transparent p-0 rounded-none" />
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/80">VendorPulse</p>
+              <p className="hidden text-sm text-slate-300 sm:block">Monitoring SaaS for vendors, invoices, and renewals</p>
             </div>
           </div>
           <div className="flex items-center gap-3 text-sm">
@@ -209,7 +209,7 @@ export default function HomePage() {
           <div className="grid gap-8 border-b border-white/10 pb-8 lg:grid-cols-[1.35fr_repeat(3,minmax(0,1fr))]">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <BrandLogo size={40} className="rounded-xl border border-cyan-300/30" />
+                <BrandLogo size={44} className="bg-transparent p-0 rounded-none" />
                 <div>
                   <p className="text-sm font-semibold text-white">Vendor Pulse</p>
                   <p className="text-xs text-slate-400">VeravalOnline Private Limited</p>
@@ -288,7 +288,27 @@ export default function HomePage() {
                 +91-7863042495
               </a>
             </div>
-            <p className="text-xs text-slate-500">© 2026 VeravalOnline Private Limited. All rights reserved.</p>
+            <p className="text-xs text-slate-500">
+              Powered by{" "}
+              <a
+                href="https://veravalonline.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 transition hover:text-cyan-200"
+              >
+                VeravalOnline Private Limited
+              </a>
+              {" · "}
+              Hosted by{" "}
+              <a
+                href="https://voguehosting.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 transition hover:text-cyan-200"
+              >
+                Vogue Hosting
+              </a>
+            </p>
           </div>
         </footer>
       </div>

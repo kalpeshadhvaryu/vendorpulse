@@ -78,7 +78,7 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
         <div className="mb-10 text-center">
           <div className="mx-auto mb-4 flex justify-center">
-            <BrandLogo size={88} priority className="rounded-2xl shadow-lg shadow-black/20" />
+            <BrandLogo size={96} priority variant="original" />
           </div>
           <h1 className="sr-only">VendorPulse</h1>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
