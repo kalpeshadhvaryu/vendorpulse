@@ -45,7 +45,7 @@
         .brand {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             font-size: 1.125rem;
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -54,12 +54,15 @@
         }
         .brand:hover { text-decoration: none; }
         .brand img {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: auto;
+            height: 56px;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
             display: block;
-            object-fit: cover;
+            object-fit: contain;
         }
+        .brand-text { display: none; }
         .brand span { color: var(--primary); }
 
         .nav { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -131,8 +134,8 @@
     <div class="wrap">
         <header>
             <a class="brand" href="/">
-                <img src="/vendorpulse-logo.png" width="36" height="36" alt="VendorPulse">
-                Vendor<span>Pulse</span>
+                <img src="/vendorpulse-logo.png" height="56" alt="VendorPulse">
+                <span class="brand-text">Vendor<span>Pulse</span></span>
             </a>
             <nav class="nav">
                 <a class="btn btn-outline" href="/privacy">Privacy Policy</a>

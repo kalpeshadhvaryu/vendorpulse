@@ -43,6 +43,17 @@ return [
      */
     'log_retention_days' => (int) env('SITE_MONITORING_LOG_RETENTION_DAYS', 90),
 
+    /**
+     * Max pending jobs allowed on the site-monitoring queue before the dispatcher
+     * skips a cycle (prevents multi-hundred-thousand job storms if Horizon lags).
+     */
+    'dispatch_max_queue_depth' => (int) env('SITE_MONITORING_DISPATCH_MAX_QUEUE_DEPTH', 2000),
+
+    /**
+     * Max due checks to enqueue per dispatcher run.
+     */
+    'dispatch_batch_size' => (int) env('SITE_MONITORING_DISPATCH_BATCH_SIZE', 200),
+
     /** Max response header lines stored in meta (name => value). */
     'http_log_header_max_lines' => (int) env('SITE_MONITORING_HTTP_LOG_HEADER_MAX_LINES', 20),
 

@@ -8,6 +8,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class DispatchDueMonitoringChecksJob implements ShouldQueue
@@ -38,8 +40,28 @@ class DispatchDueMonitoringChecksJob implements ShouldQueue
     public function handle(): void
     {
         $queue = (string) config('site-monitoring.queue', 'site-monitoring');
+        $maxDepth = max(1, (int) config('site-monitoring.dispatch_max_queue_depth', 2000));
+        $batchSize = max(1, (int) config('site-monitoring.dispatch_batch_size', 200));
 
-        MonitoringCheck::query()
+        $pending = (int) Redis::connection()->llen('queues:'.$queue);
+        if ($pending >= $maxDepth) {
+            Log::warning('site-monitoring dispatch skipped: queue depth too high', [
+                'queue' => $queue,
+                'pending' => $pending,
+                'max_depth' => $maxDepth,
+            ]);
+
+            return;
+        }
+
+        $remainingCapacity = max(0, $maxDepth - $pending);
+        $limit = min($batchSize, $remainingCapacity);
+
+        if ($limit < 1) {
+            return;
+        }
+
+        $checks = MonitoringCheck::query()
             ->withoutGlobalScopes()
             ->where('enabled', true)
             ->where(function ($q): void {
@@ -47,9 +69,22 @@ class DispatchDueMonitoringChecksJob implements ShouldQueue
                     ->orWhere('next_run_at', '<=', now());
             })
             ->orderBy('id')
-            ->limit(1000)
-            ->pluck('id')
-            ->each(fn (string $id) => RunMonitoringCheckJob::dispatch($id)->onQueue($queue));
+            ->limit($limit)
+            ->get(['id', 'interval_seconds']);
+
+        foreach ($checks as $check) {
+            // Reserve the next slot immediately so a slow/down Horizon cannot
+            // re-enqueue the same due check every minute (queue storm).
+            $interval = max(60, (int) $check->interval_seconds);
+            MonitoringCheck::query()
+                ->withoutGlobalScopes()
+                ->whereKey($check->id)
+                ->update([
+                    'next_run_at' => now()->addSeconds($interval),
+                ]);
+
+            RunMonitoringCheckJob::dispatch((string) $check->id)->onQueue($queue);
+        }
     }
 
     public function failed(?Throwable $exception): void

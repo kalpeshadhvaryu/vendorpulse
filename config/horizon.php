@@ -202,7 +202,20 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'notifications', 'email-monitoring', 'site-monitoring'],
+            'queue' => ['default', 'notifications', 'email-monitoring'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
+        'supervisor-site-monitoring' => [
+            'connection' => 'redis',
+            'queue' => ['site-monitoring'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -230,7 +243,12 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                'maxProcesses' => 10,
+                'maxProcesses' => 6,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
+            'supervisor-site-monitoring' => [
+                'maxProcesses' => 8,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
@@ -241,7 +259,10 @@ return [
 
         'local' => [
             'supervisor-1' => [
-                'maxProcesses' => 3,
+                'maxProcesses' => 2,
+            ],
+            'supervisor-site-monitoring' => [
+                'maxProcesses' => 2,
             ],
             'supervisor-experience-monitoring' => [
                 'maxProcesses' => 1,

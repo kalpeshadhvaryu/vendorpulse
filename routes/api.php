@@ -38,6 +38,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('throttle:20,60')->group(function (): void {
         Route::post('public/dns-check', [PublicToolsController::class, 'dnsCheck']);
+        Route::post('public/whois-check', [PublicToolsController::class, 'whoisCheck']);
     });
 
     Route::middleware('auth:sanctum')->group(function (): void {

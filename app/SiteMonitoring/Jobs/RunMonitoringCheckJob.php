@@ -4,6 +4,7 @@ namespace App\SiteMonitoring\Jobs;
 
 use App\SiteMonitoring\Services\MonitoringExecutionService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -11,7 +12,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Throwable;
 
-class RunMonitoringCheckJob implements ShouldQueue
+class RunMonitoringCheckJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -19,11 +20,19 @@ class RunMonitoringCheckJob implements ShouldQueue
 
     public int $tries;
 
+    /** Prevent duplicate queued runs for the same check while one is pending/running. */
+    public int $uniqueFor = 300;
+
     public function __construct(
         public string $monitoringCheckId,
     ) {
         $this->tries = max(1, (int) config('site-monitoring.run_job_tries', 3));
         $this->onQueue((string) config('site-monitoring.queue', 'site-monitoring'));
+    }
+
+    public function uniqueId(): string
+    {
+        return $this->monitoringCheckId;
     }
 
     /**

@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>VendorPulse — Free DNS &amp; Email Check</title>
-    <meta name="description" content="Free DNS, MX, SPF, and DMARC lookup for any public domain. Powered by VendorPulse.">
+    <title>VendorPulse — Free DNS, Email &amp; WHOIS Check</title>
+    <meta name="description" content="Free DNS, MX, SPF, DMARC, and WHOIS/RDAP lookup for any public domain. Powered by VendorPulse.">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/vendorpulse-logo.png">
     <style>
@@ -48,7 +48,7 @@
         .brand {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             font-size: 1.125rem;
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -57,12 +57,15 @@
         }
         .brand:hover { text-decoration: none; }
         .brand img {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: auto;
+            height: 56px;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
             display: block;
-            object-fit: cover;
+            object-fit: contain;
         }
+        .brand-text { display: none; }
         .brand span { color: var(--primary); }
 
         .nav { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -111,8 +114,52 @@
 
         .scan-form {
             display: grid;
-            grid-template-columns: 1fr auto;
+            grid-template-columns: 1fr auto auto;
             gap: 12px;
+        }
+
+        .btn-secondary {
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-secondary:hover { background: #f8fafc; text-decoration: none; }
+        .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .whois-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .whois-item {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #fafafa;
+        }
+        .whois-item dt {
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin: 0 0 4px;
+        }
+        .whois-item dd {
+            margin: 0;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            word-break: break-word;
+        }
+        .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #eef2ff;
+            color: var(--primary);
         }
 
         input[type="text"] {
@@ -226,6 +273,7 @@
         @media (max-width: 720px) {
             .scan-form { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .whois-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -233,8 +281,8 @@
     <div class="wrap">
         <header>
             <a class="brand" href="/">
-                <img src="/vendorpulse-logo.png" width="36" height="36" alt="VendorPulse">
-                Vendor<span>Pulse</span>
+                <img src="/vendorpulse-logo.png" height="56" alt="VendorPulse">
+                <span class="brand-text">Vendor<span>Pulse</span></span>
             </a>
             <nav class="nav">
                 <a class="btn btn-outline" href="/privacy">Privacy Policy</a>
@@ -245,9 +293,9 @@
         </header>
 
         <section class="hero">
-            <h1>Free DNS &amp; Email Check</h1>
+            <h1>Free DNS, Email &amp; WHOIS Check</h1>
             <p>
-                Look up MX records, SPF, DMARC, and core DNS health for any public domain.
+                Look up MX records, SPF, DMARC, DNS health, and domain registration (WHOIS/RDAP) for any public domain.
                 For monitoring, vendors, and full security tools, sign in to the dashboard.
             </p>
         </section>
@@ -263,6 +311,7 @@
                     required
                 >
                 <button id="scan-button" class="btn btn-primary" type="submit">Check domain</button>
+                <button id="whois-button" class="btn btn-secondary" type="button">Check WHOIS</button>
             </form>
             <p class="note">
                 Public lookup only. Rate limited to protect the service. Do not scan private or unauthorized targets.
@@ -311,8 +360,24 @@
             </div>
         </section>
 
+        <section id="whois-results" class="hidden" style="margin-top:20px;">
+            <div class="card">
+                <h2 style="margin:0 0 12px;font-size:1.125rem;">WHOIS / RDAP</h2>
+                <p id="whois-domain" style="margin:0 0 16px;color:var(--muted);font-size:0.875rem;"></p>
+                <dl class="whois-grid" id="whois-grid"></dl>
+            </div>
+
+            <div class="cta">
+                <div>
+                    <strong>Need expiry alerts?</strong>
+                    <p>VendorPulse can watch domain and SSL expiry and notify your team automatically.</p>
+                </div>
+                <a class="btn btn-outline" href="{{ $dashboardLoginUrl }}">Sign in for full access</a>
+            </div>
+        </section>
+
         <footer>
-            Powered by VendorPulse · Free public DNS tool ·
+            Powered by VendorPulse · Free public DNS &amp; WHOIS tool ·
             <a href="/privacy">Privacy Policy</a> ·
             <a href="{{ $signUpUrl }}">Sign Up</a> ·
             <a href="{{ $dashboardUrl }}">web dashboard</a>
@@ -322,13 +387,30 @@
     <script>
         const form = document.getElementById('scan-form');
         const button = document.getElementById('scan-button');
+        const whoisButton = document.getElementById('whois-button');
         const errorBox = document.getElementById('error-box');
         const results = document.getElementById('results');
+        const whoisResults = document.getElementById('whois-results');
 
         function badge(status) {
             if (status === 'pass') return '<span class="badge badge-pass">Pass</span>';
             if (status === 'warning') return '<span class="badge badge-warning">Warning</span>';
             return '<span class="badge badge-fail">Fail</span>';
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return escapeHtml(iso);
+            return escapeHtml(d.toUTCString());
         }
 
         function renderFindings(checks) {
@@ -384,6 +466,32 @@
             }).join('');
         }
 
+        function renderWhois(report) {
+            const days = report.days_remaining;
+            let daysLabel = '—';
+            if (typeof days === 'number') {
+                if (days < 0) daysLabel = Math.abs(days) + ' days ago (expired)';
+                else daysLabel = days + ' days';
+            }
+
+            const statuses = (report.statuses || []).map((s) => `<span class="chip">${escapeHtml(s)}</span>`).join('') || '—';
+            const nameservers = (report.nameservers || []).map((s) => `<span class="chip">${escapeHtml(s)}</span>`).join('') || '—';
+
+            document.getElementById('whois-domain').textContent = 'Domain: ' + (report.domain || '—');
+            document.getElementById('whois-grid').innerHTML = `
+                <div class="whois-item"><dt>Registrar</dt><dd>${escapeHtml(report.registrar || '—')}</dd></div>
+                <div class="whois-item"><dt>Expires</dt><dd>${formatDate(report.expires_at)}</dd></div>
+                <div class="whois-item"><dt>Days remaining</dt><dd>${escapeHtml(daysLabel)}</dd></div>
+                <div class="whois-item"><dt>Created</dt><dd>${formatDate(report.created_at)}</dd></div>
+                <div class="whois-item"><dt>Updated</dt><dd>${formatDate(report.updated_at)}</dd></div>
+                <div class="whois-item"><dt>Source</dt><dd>${escapeHtml(report.source || 'rdap')}</dd></div>
+                <div class="whois-item" style="grid-column:1/-1;"><dt>Status</dt><dd class="chip-list">${statuses}</dd></div>
+                <div class="whois-item" style="grid-column:1/-1;"><dt>Nameservers</dt><dd class="chip-list">${nameservers}</dd></div>
+            `;
+            whoisResults.classList.remove('hidden');
+            whoisResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         document.querySelectorAll('.tab').forEach((tab) => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.tab').forEach((el) => el.classList.remove('active'));
@@ -399,9 +507,11 @@
             if (!target) return;
 
             button.disabled = true;
+            whoisButton.disabled = true;
             button.textContent = 'Checking...';
             errorBox.classList.add('hidden');
             errorBox.textContent = '';
+            whoisResults.classList.add('hidden');
 
             try {
                 const response = await fetch('/api/v1/public/dns-check', {
@@ -435,7 +545,49 @@
                 errorBox.classList.remove('hidden');
             } finally {
                 button.disabled = false;
+                whoisButton.disabled = false;
                 button.textContent = 'Check domain';
+            }
+        });
+
+        whoisButton.addEventListener('click', async () => {
+            const target = document.getElementById('target-input').value.trim();
+            if (!target) {
+                document.getElementById('target-input').focus();
+                return;
+            }
+
+            button.disabled = true;
+            whoisButton.disabled = true;
+            whoisButton.textContent = 'Looking up...';
+            errorBox.classList.add('hidden');
+            errorBox.textContent = '';
+            results.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/v1/public/whois-check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ target }),
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload.success) {
+                    const validationMsg = payload.errors?.target?.[0];
+                    throw new Error(validationMsg || payload.message || 'WHOIS check failed.');
+                }
+
+                renderWhois(payload.data || {});
+            } catch (error) {
+                errorBox.textContent = error instanceof Error ? error.message : 'Unexpected error.';
+                errorBox.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                whoisButton.disabled = false;
+                whoisButton.textContent = 'Check WHOIS';
             }
         });
     </script>
