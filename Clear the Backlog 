@@ -1,0 +1,25 @@
+Fix now (clear the backlog)
+cd /var/www/vendorpulse
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.bind.yml"
+
+# Clear only the stuck monitoring queue (keeps other queues)
+$COMPOSE exec app php artisan queue:clear redis --queue=site-monitoring
+
+# Confirm it's empty
+$COMPOSE exec app php artisan tinker --execute="
+echo \Illuminate\Support\Facades\Redis::connection()->llen('queues:site-monitoring');
+"
+
+# Restart Horizon so workers are fresh
+$COMPOSE restart horizon
+sleep 5
+$COMPOSE exec horizon php artisan horizon:status
+
+
+New
+Ops habits
+After every deploy: restart Horizon
+Occasionally check:
+Redis llen queues:site-monitoring — keep it low hundreds, not thousands
+Prefer check intervals ≥ 5 minutes unless you really need faster
+Deploy this code when you can — that’s the real long-term fix.
