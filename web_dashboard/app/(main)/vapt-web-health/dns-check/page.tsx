@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { EmailSecurityCard } from "@/components/vapt/email-security-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { runDnsCheck } from "@/lib/api/vapt-web-health";
 import type { DnsCheckItem, DnsCheckReport } from "@/lib/api/types";
@@ -115,9 +116,7 @@ export default function DnsCheckPage() {
               {mutation.isPending ? "Scanning..." : "Run DNS Check"}
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground">
-            Use only domains you own or are authorized to assess.
-          </p>
+          <p className="text-xs text-muted-foreground">Use only domains you own or are authorized to assess.</p>
         </CardContent>
       </Card>
 
@@ -149,6 +148,14 @@ export default function DnsCheckPage() {
               </CardHeader>
             </Card>
           </div>
+
+          {report.email_security ? (
+            <EmailSecurityCard
+              report={report.email_security}
+              checkingSelector={mutation.isPending && Boolean(mutation.variables?.dkim_selector)}
+              onCheckSelector={(selector) => mutation.mutate({ target: report.target, dkim_selector: selector })}
+            />
+          ) : null}
 
           <Card className="border-border/60">
             <CardHeader>

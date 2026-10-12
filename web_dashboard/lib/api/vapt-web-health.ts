@@ -2,6 +2,8 @@ import { api } from "./client";
 import type {
   ApiSuccessResponse,
   DnsCheckReport,
+  EmailDeliverabilityTest,
+  EmailDeliverabilityTestList,
   PortCheckerReport,
   UrlCheckerMode,
   UrlCheckerReport,
@@ -75,6 +77,7 @@ export async function fetchWebsiteSpeedtestRuns(
 
 export type RunDnsCheckPayload = {
   target: string;
+  dkim_selector?: string;
 };
 
 export async function runDnsCheck(payload: RunDnsCheckPayload): Promise<DnsCheckReport> {
@@ -82,6 +85,24 @@ export async function runDnsCheck(payload: RunDnsCheckPayload): Promise<DnsCheck
     "/vapt-web-health/dns-check",
     payload,
   );
+
+  return data.data;
+}
+
+export async function fetchEmailTests(): Promise<EmailDeliverabilityTestList> {
+  const { data } = await api.get<ApiSuccessResponse<EmailDeliverabilityTestList>>("/vapt-web-health/email-tests");
+
+  return data.data;
+}
+
+export async function createEmailTest(): Promise<EmailDeliverabilityTest> {
+  const { data } = await api.post<ApiSuccessResponse<EmailDeliverabilityTest>>("/vapt-web-health/email-tests");
+
+  return data.data;
+}
+
+export async function fetchEmailTest(id: string): Promise<EmailDeliverabilityTest> {
+  const { data } = await api.get<ApiSuccessResponse<EmailDeliverabilityTest>>(`/vapt-web-health/email-tests/${id}`);
 
   return data.data;
 }

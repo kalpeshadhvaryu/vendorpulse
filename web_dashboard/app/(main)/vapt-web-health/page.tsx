@@ -52,6 +52,24 @@ export default function VaptWebHealthPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
+              Email Deliverability Test
+            </CardTitle>
+            <CardDescription>
+              Send a real email to a unique address and see whether SPF, DKIM and DMARC passed, alignment, sender
+              reputation and encryption.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="secondary">
+              <Link href="/vapt-web-health/email-test">Open Email Test</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
               Port Checker
             </CardTitle>
             <CardDescription>

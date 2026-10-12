@@ -82,6 +82,7 @@ export default function CybersecurityVaptPage() {
           "/vapt-web-health/url-checker": "Quick links and site-wide audits",
           "/vapt-web-health": "Security and reliability hub",
           "/vapt-web-health/dns-check": "DNS records, policy, and resolver diagnostics",
+          "/vapt-web-health/email-test": "Send a real email and see SPF, DKIM, DMARC and reputation results",
           "/vapt-web-health/port-checker": "TCP exposure checks with quick and custom profiles",
           "/vapt-web-health/website-speedtest": `${runs.length} recent runs · ${successfulRuns} successful`,
         }}

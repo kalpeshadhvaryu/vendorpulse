@@ -70,6 +70,7 @@ export const categoryLinks: SidebarCategory[] = [
       { href: "/vapt-web-health/url-checker", label: "Link/Website Auditor", icon: Link2 },
       { href: "/vapt-web-health", label: "Web Health", icon: Globe },
       { href: "/vapt-web-health/dns-check", label: "DNS Check", icon: Globe },
+      { href: "/vapt-web-health/email-test", label: "Email Deliverability Test", icon: Mail },
       { href: "/vapt-web-health/port-checker", label: "Port Checker", icon: ShieldAlert },
       { href: "/vapt-web-health/website-speedtest", label: "Website Speedtest", icon: Gauge },
       { label: "Security Headers & SSL", icon: LockKeyhole, placeholder: true },

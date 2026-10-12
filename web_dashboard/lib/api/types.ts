@@ -611,6 +611,156 @@ export type DnsCheckReport = {
     nameserver_host_resolution?: Record<string, { a: string[]; aaaa: string[] }>;
   };
   checks: DnsCheckItem[];
+  email_security?: EmailSecurityReport | null;
+};
+
+export type EmailSecurityDkimKey = {
+  selector: string;
+  record: string;
+  key_type: string;
+  key_bits: number | null;
+  testing: boolean;
+  revoked: boolean;
+  issues: string[];
+};
+
+export type EmailSecurityMxHost = {
+  host: string;
+  priority: number;
+  ips: { ip: string; public: boolean; ptr: string[]; fcrdns: boolean }[];
+};
+
+export type EmailSecurityBlacklistResult = {
+  target: string;
+  list: string;
+  status: "clean" | "listed" | "error";
+  response: string | null;
+};
+
+export type EmailSecurityReport = {
+  domain: string;
+  score: number;
+  grade: "A" | "B" | "C" | "D" | "F";
+  breakdown: { key: string; label: string; earned: number; possible: number }[];
+  receives_mail: boolean;
+  null_mx: boolean;
+  spf: {
+    records: string[];
+    record: string | null;
+    all: string | null;
+    lookups: number;
+    void_lookups: number;
+    includes: string[];
+    uses_ptr: boolean;
+    loop: boolean;
+    errors: string[];
+  };
+  dmarc: {
+    records: string[];
+    record: string | null;
+    source: string;
+    tags: {
+      p?: string | null;
+      sp?: string | null;
+      pct?: number;
+      rua?: string[];
+      ruf?: string[];
+      adkim?: "r" | "s";
+      aspf?: "r" | "s";
+    };
+  };
+  dkim: {
+    domain?: string;
+    wildcard?: boolean;
+    selectors_checked: number;
+    custom_selector: string | null;
+    custom_selector_found: boolean;
+    keys: EmailSecurityDkimKey[];
+  };
+  mx_hosts: EmailSecurityMxHost[];
+  mta_sts: {
+    record: string | null;
+    policy_url: string;
+    policy: { version: string | null; mode: string | null; mx: string[]; max_age: number | null } | null;
+    error: string | null;
+    unmatched_mx: string[];
+  };
+  tls_rpt: { record: string | null; rua: string[] };
+  bimi: { record: string | null; logo: string | null; vmc: string | null };
+  blacklist: {
+    enabled: boolean;
+    checked: number;
+    listed: number;
+    errors: number;
+    results: EmailSecurityBlacklistResult[];
+  };
+};
+
+export type EmailTestAuthMethod = { result: string; comment: string | null };
+
+export type EmailTestResult = {
+  score: number;
+  grade: EmailSecurityReport["grade"];
+  breakdown: EmailSecurityReport["breakdown"];
+  message: {
+    from: string | null;
+    from_address: string | null;
+    from_domain: string | null;
+    return_path: string | null;
+    subject: string | null;
+    message_id: string | null;
+    date: string | null;
+    x_mailer: string | null;
+    list_unsubscribe: boolean;
+    list_unsubscribe_one_click: boolean;
+    size: number | null;
+    received_hops: number;
+  };
+  authentication: {
+    authserv_id: string;
+    raw: string;
+    spf: (EmailTestAuthMethod & { mailfrom: string | null }) | null;
+    dkim: (EmailTestAuthMethod & { domain: string | null; selector: string | null })[];
+    dmarc: (EmailTestAuthMethod & { header_from: string | null; policy: string | null }) | null;
+  } | null;
+  alignment: {
+    from_domain: string | null;
+    mailfrom_domain: string | null;
+    dkim_domains: string[];
+    dkim_aligned: boolean;
+    spf_aligned: boolean;
+  };
+  dkim_signatures: {
+    domain: string | null;
+    selector: string | null;
+    algorithm: string | null;
+    key: EmailSecurityDkimKey | null;
+  }[];
+  sending_ip: { ip: string; version: 4 | 6; ptr: string[]; fcrdns: boolean } | null;
+  blacklist: EmailSecurityReport["blacklist"] | null;
+  tls: { used: boolean | null; detail: string | null };
+  checks: DnsCheckItem[];
+};
+
+export type EmailDeliverabilityTest = {
+  id: string;
+  token: string;
+  status: "waiting" | "received" | "expired";
+  address: string;
+  subject_hint: string;
+  expires_at: string;
+  received_at: string | null;
+  from_address: string | null;
+  subject: string | null;
+  score: number | null;
+  grade: EmailSecurityReport["grade"] | null;
+  result?: EmailTestResult | null;
+  created_at: string;
+};
+
+export type EmailDeliverabilityTestList = {
+  available: boolean;
+  items: EmailDeliverabilityTest[];
 };
 
 export type PortCheckerResult = {

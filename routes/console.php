@@ -4,6 +4,7 @@ use App\EmailMonitoring\Jobs\DispatchPollEmailMailboxesJob;
 use App\ExperienceMonitoring\Jobs\DispatchDueExperienceMonitoringTestsJob;
 use App\Models\MonitoringCheck;
 use App\Models\Organization;
+use App\Services\Vapt\Email\EmailDeliverabilityTestService;
 use App\SiteMonitoring\Jobs\DispatchDueMonitoringChecksJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -50,6 +51,19 @@ Schedule::command('monitoring:prune-logs')
     ->dailyAt('03:20')
     ->name('site-monitoring:prune-logs')
     ->withoutOverlapping(120);
+
+Schedule::call(static function (): void {
+    app(EmailDeliverabilityTestService::class)->processInbox();
+})
+    ->everyMinute()
+    ->name('email-test:process-inbox');
+
+Schedule::call(static function (): void {
+    app(EmailDeliverabilityTestService::class)->prune();
+})
+    ->dailyAt('03:40')
+    ->name('email-test:prune')
+    ->withoutOverlapping(30);
 
 Artisan::command('monitoring:reassign-check
     {checkId : Monitoring check UUID}

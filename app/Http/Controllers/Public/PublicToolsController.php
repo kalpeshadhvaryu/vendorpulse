@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\RunPublicDnsCheckRequest;
+use App\Models\EmailDeliverabilityTest;
 use App\Services\Public\PublicWhoisService;
 use App\Services\Vapt\DnsCheckService;
+use App\Services\Vapt\Email\EmailDeliverabilityTestService;
 use App\Support\ApiResponse;
 use App\Support\PublicScanTargetValidator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PublicToolsController extends Controller
@@ -17,6 +20,7 @@ class PublicToolsController extends Controller
         private readonly DnsCheckService $dnsCheck,
         private readonly PublicWhoisService $whois,
         private readonly PublicScanTargetValidator $targetValidator,
+        private readonly EmailDeliverabilityTestService $emailTests,
     ) {}
 
     public function home(): View
@@ -27,6 +31,7 @@ class PublicToolsController extends Controller
             'dashboardLoginUrl' => $dashboardBaseUrl.'/web_dashboard/login',
             'dashboardUrl' => $dashboardBaseUrl.'/web_dashboard',
             'signUpUrl' => 'mailto:sales@veravalonline.com?subject=VendorPulse%20Sign%20Up',
+            'emailTestAvailable' => $this->emailTests->isAvailable(),
         ]);
     }
 
@@ -52,7 +57,7 @@ class PublicToolsController extends Controller
             );
         }
 
-        $report = $this->dnsCheck->scan($target);
+        $report = $this->dnsCheck->scan($target, $request->validated('dkim_selector'));
 
         return ApiResponse::success($report, 'DNS check completed.');
     }
@@ -78,5 +83,30 @@ class PublicToolsController extends Controller
         }
 
         return ApiResponse::success($report, 'WHOIS check completed.');
+    }
+
+    public function createEmailTest(Request $request): JsonResponse
+    {
+        if (! $this->emailTests->isAvailable()) {
+            return ApiResponse::error('The email deliverability test is not available right now.', 503);
+        }
+
+        $test = $this->emailTests->create('public', null, null, $request->ip());
+
+        return ApiResponse::success($this->emailTests->present($test), 'Email test created.', 201);
+    }
+
+    public function showEmailTest(string $token): JsonResponse
+    {
+        $test = EmailDeliverabilityTest::query()
+            ->where('source', 'public')
+            ->where('token', strtolower($token))
+            ->first();
+
+        if ($test === null) {
+            return ApiResponse::error('Email test not found.', 404);
+        }
+
+        return ApiResponse::success($this->emailTests->present($this->emailTests->refresh($test)));
     }
 }

@@ -35,6 +35,8 @@ export const queryKeys = {
     ["experience-monitoring-screenshots", id, params ?? {}] as const,
   websiteSpeedtestRuns: (params?: Record<string, string>) =>
     ["website-speedtest-runs", params ?? {}] as const,
+  emailTests: (organizationId: string | null) => ["email-tests", organizationId ?? "none"] as const,
+  emailTest: (id: string) => ["email-test", id] as const,
   domainSocialAccounts: (monitoringCheckId?: string) =>
     ["domain-social-accounts", monitoringCheckId ?? "all"] as const,
   emailMailboxes: (params?: Record<string, string>) => ["email-mailboxes", params ?? {}] as const,

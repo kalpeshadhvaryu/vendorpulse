@@ -2,10 +2,13 @@
 
 namespace App\Services\Vapt;
 
+use App\Services\Vapt\Email\EmailSecurityService;
 use Illuminate\Support\Facades\Http;
 
 class DnsCheckService
 {
+    public function __construct(private readonly EmailSecurityService $emailSecurity) {}
+
     /**
      * @return array{
      *   target:string,
@@ -14,10 +17,11 @@ class DnsCheckService
      *   resolver_nameservers:array<int,string>,
      *   summary:array{total_checks:int,passed:int,warnings:int,failed:int},
      *   records:array<string,mixed>,
-     *   checks:array<int,array{key:string,title:string,status:string,severity:string,explanation:string,suggestion:string,evidence:array<int,string>}>
+     *   checks:array<int,array{key:string,title:string,status:string,severity:string,explanation:string,suggestion:string,evidence:array<int,string>}>,
+     *   email_security:array<string,mixed>|null
      * }
      */
-    public function scan(string $target): array
+    public function scan(string $target, ?string $dkimSelector = null): array
     {
         $host = $this->extractHost($target);
 
@@ -54,6 +58,7 @@ class DnsCheckService
                     'suggestion' => 'Provide a valid domain like example.com or URL like https://example.com.',
                     'evidence' => ['Input: '.trim($target)],
                 ]],
+                'email_security' => null,
             ];
         }
 
@@ -404,45 +409,12 @@ class DnsCheckService
             ],
         );
 
-        $spfRecords = array_values(array_filter($txt, static fn (string $row): bool => str_starts_with(strtolower($row), 'v=spf1')));
-        $checks[] = $this->result(
-            key: 'spf',
-            title: 'SPF policy',
-            status: $spfRecords === [] ? 'warning' : (count($spfRecords) > 1 ? 'fail' : 'pass'),
-            severity: $spfRecords === [] ? 'S2' : (count($spfRecords) > 1 ? 'S1' : 'S4'),
-            explanation: $spfRecords === []
-                ? 'No SPF TXT record was detected.'
-                : (count($spfRecords) > 1
-                    ? 'Multiple SPF records were found, which can break SPF evaluation.'
-                    : 'A single SPF policy was found.'),
-            suggestion: $spfRecords === []
-                ? 'Publish one SPF TXT record to define authorized sending hosts.'
-                : (count($spfRecords) > 1
-                    ? 'Merge SPF policies into exactly one v=spf1 TXT record.'
-                    : 'Keep SPF includes and mechanisms minimal and reviewed.'),
-            evidence: ['SPF records: '.($spfRecords !== [] ? implode(' | ', $spfRecords) : 'none')],
-        );
-
-        $dmarcRecord = $dmarc[0] ?? null;
-        $hasRejectOrQuarantine = $dmarcRecord !== null
-            && (str_contains(strtolower($dmarcRecord), 'p=reject') || str_contains(strtolower($dmarcRecord), 'p=quarantine'));
-        $checks[] = $this->result(
-            key: 'dmarc',
-            title: 'DMARC enforcement',
-            status: $dmarcRecord === null ? 'warning' : ($hasRejectOrQuarantine ? 'pass' : 'warning'),
-            severity: $dmarcRecord === null ? 'S2' : ($hasRejectOrQuarantine ? 'S4' : 'S3'),
-            explanation: $dmarcRecord === null
-                ? 'No DMARC record was found at _dmarc.'
-                : ($hasRejectOrQuarantine
-                    ? 'DMARC is present with enforcement policy (quarantine/reject).'
-                    : 'DMARC exists but policy appears monitoring-only (p=none).'),
-            suggestion: $dmarcRecord === null
-                ? 'Publish a DMARC record and start with aggregate reports, then move to enforcement.'
-                : ($hasRejectOrQuarantine
-                    ? 'Keep DMARC rua/ruf reporting active and monitor alignment failures.'
-                    : 'Move DMARC policy from p=none toward quarantine/reject after validation.'),
-            evidence: ['DMARC: '.($dmarcRecord ?? 'none')],
-        );
+        $emailSecurity = null;
+        if (! filter_var($host, FILTER_VALIDATE_IP)) {
+            $emailSecurity = $this->emailSecurity->analyze($host, $dkimSelector);
+            array_push($checks, ...$emailSecurity['checks']);
+            unset($emailSecurity['checks']);
+        }
 
         $checks[] = $this->result(
             key: 'caa',
@@ -599,6 +571,7 @@ class DnsCheckService
                 'nameserver_host_resolution' => $nsResolution,
             ],
             'checks' => $checks,
+            'email_security' => $emailSecurity,
         ];
     }
 

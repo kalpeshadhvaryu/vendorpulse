@@ -104,7 +104,7 @@ class VaptWebHealthController extends BaseApiController
         $validated = $request->validated();
         $target = (string) ($validated['target'] ?? '');
 
-        $report = $this->dnsCheck->scan($target);
+        $report = $this->dnsCheck->scan($target, $validated['dkim_selector'] ?? null);
 
         return ApiResponse::success($report, 'DNS check report generated.');
     }

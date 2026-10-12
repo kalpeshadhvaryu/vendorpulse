@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\DomainSocialAccountController;
+use App\Http\Controllers\Api\V1\EmailDeliverabilityTestController;
 use App\Http\Controllers\Api\V1\EmailLogController;
 use App\Http\Controllers\Api\V1\EmailMailboxController;
 use App\Http\Controllers\Api\V1\ExperienceMonitoringController;
@@ -13,9 +14,9 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrganizationManagementController;
 use App\Http\Controllers\Api\V1\OrganizationSmtpSettingsController;
 use App\Http\Controllers\Api\V1\SystemSettingsController;
+use App\Http\Controllers\Api\V1\VaptWebHealthController;
 use App\Http\Controllers\Api\V1\VendorController;
 use App\Http\Controllers\Api\V1\VendorEmailController;
-use App\Http\Controllers\Api\V1\VaptWebHealthController;
 use App\Http\Controllers\Public\PublicToolsController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('public/dns-check', [PublicToolsController::class, 'dnsCheck']);
         Route::post('public/whois-check', [PublicToolsController::class, 'whoisCheck']);
     });
+
+    Route::middleware('throttle:10,60,email-test-create')->post('public/email-test', [PublicToolsController::class, 'createEmailTest']);
+    Route::middleware('throttle:120,1,email-test-poll')
+        ->get('public/email-test/{token}', [PublicToolsController::class, 'showEmailTest'])
+        ->where('token', '[a-zA-Z0-9]{6,32}');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);
@@ -112,6 +118,10 @@ Route::prefix('v1')->group(function (): void {
             Route::get('vapt-web-health/website-speedtest-runs', [VaptWebHealthController::class, 'websiteSpeedtestRuns']);
             Route::post('vapt-web-health/dns-check', [VaptWebHealthController::class, 'dnsCheck']);
             Route::post('vapt-web-health/port-checker', [VaptWebHealthController::class, 'portChecker']);
+            Route::get('vapt-web-health/email-tests', [EmailDeliverabilityTestController::class, 'index']);
+            Route::post('vapt-web-health/email-tests', [EmailDeliverabilityTestController::class, 'store']);
+            Route::get('vapt-web-health/email-tests/{email_deliverability_test}', [EmailDeliverabilityTestController::class, 'show'])
+                ->whereUuid('email_deliverability_test');
             Route::post('marketing-seo/on-page-audit', [MarketingSeoController::class, 'onPageAudit']);
             Route::get('social-accounts', [DomainSocialAccountController::class, 'index']);
             Route::post('social-accounts', [DomainSocialAccountController::class, 'store']);
