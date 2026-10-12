@@ -44,12 +44,12 @@ export function OrgSwitcher() {
 
   const organizationsQuery = useQuery({
     queryKey: queryKeys.organizations({ include_trashed: false }),
-    queryFn: () => fetchOrganizations({ include_trashed: false }),
+    queryFn: async () => (await fetchOrganizations({ include_trashed: false })).data,
     enabled: Boolean(token) && isAdmin,
     staleTime: 60_000,
   });
 
-  const organizations = isAdmin ? (organizationsQuery.data?.data ?? []) : memberOrganizations;
+  const organizations = isAdmin ? (organizationsQuery.data ?? []) : memberOrganizations;
 
   const filtered = useMemo(
     () => filterOrganizations(organizations, search),

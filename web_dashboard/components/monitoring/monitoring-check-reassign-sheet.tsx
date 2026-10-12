@@ -34,22 +34,12 @@ export function MonitoringCheckReassignSheet({ check, open, onOpenChange }: Prop
     enabled: open,
   });
 
-  const organizations = useMemo<Organization[]>(() => {
-    const payload = organizationsQuery.data as unknown;
+  const organizations = useMemo<Organization[]>(() => organizationsQuery.data ?? [], [organizationsQuery.data]);
 
-    if (Array.isArray(payload)) {
-      return payload as Organization[];
-    }
-
-    if (payload && typeof payload === "object" && "data" in payload) {
-      const nested = (payload as { data?: unknown }).data;
-      if (Array.isArray(nested)) {
-        return nested as Organization[];
-      }
-    }
-
-    return [];
-  }, [organizationsQuery.data]);
+  const currentOrganizationName = useMemo(
+    () => organizations.find((org) => org.id === check?.organization_id)?.name ?? check?.organization_id,
+    [organizations, check],
+  );
 
   const organizationOptions = useMemo(
     () => organizations.filter((org) => !check || org.id !== check.organization_id),
@@ -160,7 +150,7 @@ export function MonitoringCheckReassignSheet({ check, open, onOpenChange }: Prop
             <>
               <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-sm">
                 <p className="font-medium text-foreground">{check.name}</p>
-                <p className="text-muted-foreground">Current organization: {check.organization_id}</p>
+                <p className="text-muted-foreground">Current organization: {currentOrganizationName}</p>
               </div>
 
               <div className="space-y-2">
