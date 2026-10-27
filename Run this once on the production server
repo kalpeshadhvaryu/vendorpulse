@@ -143,3 +143,11 @@ docker compose -f docker-compose.yml -f docker-compose.bind.yml restart app fron
 
 For Local NEXTAUTH 
 cd /home/veraval/projects/vendorpulse && NEW_SECRET="$(openssl rand -base64 48 | tr -d '\n')" && for f in .env .env.docker; do grep -v '^NEXTAUTH_SECRET=' "$f" > "$f.tmp" && printf '\nNEXTAUTH_SECRET=%s\n' "$NEW_SECRET" >> "$f.tmp" && mv "$f.tmp" "$f"; done && grep -c '^NEXTAUTH_SECRET=' .env .env.docker && grep '^NEXTAUTH_SECRET=' .env .env.docker | sed 's/=.*/=masked/'
+
+# Disk almost full (logs / Docker / monitoring_logs)
+# Full guide: PRODUCTION-DISK-CLEANUP.md
+# Quick start on server:
+#   1) diagnose block from that file
+#   2) docker system prune -af && docker builder prune -af
+#   3) docker compose ... exec app php artisan monitoring:prune-logs --dry-run
+#   4) then without --dry-run, then VACUUM monitoring_logs
