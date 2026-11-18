@@ -1,0 +1,184 @@
+# How Keyword Tracking Works (VendorPulse)
+
+Written 18 Nov 2026. Product + technical overview for Marketing & SEO → Keywords.
+
+**Status:** MVP implemented in VendorPulse (CRUD + Check now + history + hourly scheduler).
+Live Google ranks need `SEO_KEYWORDS_PROVIDER` + API key (see `.env.example`).
+
+---
+
+## 1. Goal
+
+Help each organization track **priority keywords** and see:
+
+1. **Google organic rank** (classic position 1–100, or not ranking)
+2. **AI visibility** — whether the brand/domain is cited in AI answers
+   (ChatGPT, Gemini, Perplexity, Google AI Overviews, etc.)
+3. **Trend** — improved / dropped / stable vs previous checks
+
+This sits under **Marketing & SEO → Keywords**, next to On-Page SEO.
+
+---
+
+## 2. Concepts
+
+| Term | Meaning |
+|---|---|
+| Keyword | The search phrase the client cares about |
+| Priority | High / Medium / Low — drives check frequency and alerts |
+| Target URL | The page they want to rank (or be cited for) |
+| Locale | Market + language (e.g. India, en-IN) |
+| Google position | Organic result position for that keyword |
+| AI citation | Brand/domain appears in an AI answer for that query |
+| Check / snapshot | One run that stores Google + AI results for a keyword |
+
+---
+
+## 3. User flow
+
+1. User opens **Marketing & SEO → Keywords**
+2. Adds a keyword: phrase, priority, target URL, locale, device (mobile/desktop)
+3. Keyword is stored as **Active**
+4. Scheduler (or “Check now”) runs a rank check
+5. Results appear on the list: Google position, change, AI cited yes/no, last checked
+6. User opens keyword detail → history chart + latest evidence
+7. High-priority drops trigger a notification (later)
+
+---
+
+## 4. Screens (MVP)
+
+### 4.1 Keywords list
+- Table: Keyword | Priority | Google rank | Change | AI visibility | Target URL | Last checked | Status
+- Filters: priority, status, search
+- Actions: Add keyword, Check now (selected / all due), Pause
+
+### 4.2 Add / Edit keyword
+- Phrase (required)
+- Priority: High / Medium / Low
+- Target URL (optional but recommended)
+- Locale / country + language
+- Device: Mobile / Desktop
+- Tags (optional)
+- Notes (optional)
+
+### 4.3 Keyword detail
+- Current Google position + ranked URL
+- AI engines: Cited / Not cited / Unknown per engine
+- History (last 30–90 days)
+- Latest check evidence (snippets / sources used)
+
+---
+
+## 5. How Google ranking is measured
+
+1. Query Google (via a rank API or controlled search) for the keyword + locale + device
+2. Scan organic results (typically top 100)
+3. Match the organization’s domain / target URL
+4. Store: position, matched URL, checked_at
+5. Compare to previous check → up / down / same / new / lost
+
+**Important:** Do not scrape Google from the app server with raw HTTP in production long-term
+(blocks, ToS, unstable). Prefer a dedicated SERP/rank provider (DataForSEO, SerpAPI,
+ValueSERP, etc.) or a controlled worker with clear rate limits.
+
+---
+
+## 6. How AI visibility is measured
+
+AI answers do not have a stable “position #7” like Google. Treat them as **visibility**:
+
+| Result | Meaning |
+|---|---|
+| Cited | Brand name or domain appears in the answer / citations |
+| Not cited | Answer exists but brand is absent |
+| Unknown | Engine not checked yet / provider failed |
+
+MVP engines (start with 1–2):
+- Google AI Overview (if present in SERP response)
+- Perplexity / Gemini / ChatGPT (via their APIs or a research provider)
+
+Store per check: engine, cited (bool), snippet/evidence, sources if available.
+
+---
+
+## 7. Priority → check schedule
+
+| Priority | Suggested frequency |
+|---|---|
+| High | Daily |
+| Medium | Every 3 days |
+| Low | Weekly |
+
+“Check now” always allowed (rate-limited per organization).
+
+---
+
+## 8. Data model (MVP)
+
+### `seo_keywords`
+- id (uuid)
+- organization_id
+- phrase
+- priority (high|medium|low)
+- target_url (nullable)
+- locale / country / language
+- device (mobile|desktop)
+- tags (json, optional)
+- status (active|paused)
+- last_checked_at
+- current_google_position (nullable)
+- current_google_url (nullable)
+- created_by, timestamps
+
+### `seo_keyword_checks`
+- id (uuid)
+- seo_keyword_id
+- checked_at
+- google_position (nullable = not in top N)
+- google_url (nullable)
+- google_raw (json, optional, trimmed)
+- ai_results (json: [{engine, cited, evidence}])
+- source (scheduled|manual)
+- error (nullable)
+
+---
+
+## 9. Phased delivery
+
+### Phase 1 — MVP (build first)
+- Menu + list + add/edit/pause
+- Manual “Check now”
+- Google position via provider stub or one real SERP API
+- One AI signal (or “coming soon” placeholder with structure ready)
+- Store history
+
+### Phase 2
+- Scheduled checks by priority
+- Drop alerts for High priority
+- History chart
+
+### Phase 3
+- More AI engines
+- Competitor comparison / share of voice
+- Link keyword → On-Page SEO / content tasks
+
+---
+
+## 10. What not to promise early
+
+- Exact permanent rank number inside ChatGPT every day
+- Tracking hundreds of keywords in real time with no provider cost plan
+- Perfect AI Overview detection without a SERP provider that returns it
+
+---
+
+## 11. Fit in VendorPulse
+
+| Area | Role |
+|---|---|
+| Monitoring | Is the site up? |
+| On-Page SEO | Is the page technically/content ready? |
+| **Keywords** | Are we visible for the phrases that matter (Google + AI)? |
+
+Keywords = demand / visibility layer.

@@ -4,6 +4,8 @@ use App\EmailMonitoring\Jobs\DispatchPollEmailMailboxesJob;
 use App\ExperienceMonitoring\Jobs\DispatchDueExperienceMonitoringTestsJob;
 use App\Models\MonitoringCheck;
 use App\Models\Organization;
+use App\Models\SeoKeyword;
+use App\Services\MarketingSeo\KeywordRankCheckService;
 use App\Services\Vapt\Email\EmailDeliverabilityTestService;
 use App\SiteMonitoring\Jobs\DispatchDueMonitoringChecksJob;
 use Illuminate\Foundation\Inspiring;
@@ -64,6 +66,32 @@ Schedule::call(static function (): void {
     ->dailyAt('03:40')
     ->name('email-test:prune')
     ->withoutOverlapping(30);
+
+Schedule::call(static function (): void {
+    $service = app(KeywordRankCheckService::class);
+    if (! $service->isProviderConfigured()) {
+        return;
+    }
+
+    SeoKeyword::query()
+        ->where('status', SeoKeyword::STATUS_ACTIVE)
+        ->where(function ($q): void {
+            $q->whereNull('next_check_at')->orWhere('next_check_at', '<=', now());
+        })
+        ->orderBy('next_check_at')
+        ->limit(20)
+        ->get()
+        ->each(function (SeoKeyword $keyword) use ($service): void {
+            try {
+                $service->check($keyword, 'scheduled');
+            } catch (Throwable) {
+                // Individual failures are stored on the check row inside the service.
+            }
+        });
+})
+    ->hourly()
+    ->name('seo-keywords:check-due')
+    ->withoutOverlapping(55);
 
 Artisan::command('monitoring:reassign-check
     {checkId : Monitoring check UUID}

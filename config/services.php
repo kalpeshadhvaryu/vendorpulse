@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+    | Option B: company-owned Cloudflare account.
+    | Domains (zones) are synced here, then assigned to client organizations.
+    */
+    'cloudflare' => [
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
+        'api_base' => env('CLOUDFLARE_API_BASE', 'https://api.cloudflare.com/client/v4'),
+        'http_timeout_seconds' => (int) env('CLOUDFLARE_HTTP_TIMEOUT', 20),
+        // Allow org users to purge cache for assigned zones
+        'allow_org_purge_cache' => (bool) env('CLOUDFLARE_ALLOW_ORG_PURGE_CACHE', true),
+    ],
+
 ];

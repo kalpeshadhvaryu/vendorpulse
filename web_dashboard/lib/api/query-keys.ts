@@ -49,4 +49,11 @@ export const queryKeys = {
   dashboardMonitoringCreateFallbackTrends: (params?: Record<string, string>) =>
     ["dashboard-monitoring-create-fallback-trends", params ?? {}] as const,
   onPageSeoAudit: (targetUrl: string) => ["on-page-seo-audit", targetUrl] as const,
+  seoKeywords: (organizationId: string | null, params?: Record<string, string>) =>
+    ["seo-keywords", organizationId ?? "none", params ?? {}] as const,
+  seoKeyword: (id: string) => ["seo-keyword", id] as const,
+  cloudflareAdminZones: (params?: Record<string, string>) =>
+    ["cloudflare-admin-zones", params ?? {}] as const,
+  cloudflareOrgDomains: (organizationId: string | null) =>
+    ["cloudflare-org-domains", organizationId ?? "none"] as const,
 };

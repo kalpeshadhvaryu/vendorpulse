@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LayoutDashboard, Users } from "lucide-react";
+import { Building2, Globe, LayoutDashboard, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const links: Array<{
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/cloudflare-domains", label: "Cloudflare Domains", icon: Globe },
 ];
 
 export function AdminNav() {

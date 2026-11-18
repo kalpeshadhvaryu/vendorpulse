@@ -68,6 +68,9 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+      CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
+      CLOUDFLARE_ALLOW_ORG_PURGE_CACHE: ${CLOUDFLARE_ALLOW_ORG_PURGE_CACHE:-true}
     depends_on:
       postgres:
         condition: service_healthy

@@ -83,6 +83,7 @@ export default function MarketingSeoHubPage() {
         sectionId="marketing-seo"
         statsByHref={{
           "/marketing-seo/on-page-seo-scorecard": "Quick SEO and site audits",
+          "/marketing-seo/keywords": "Track Google rank and AI visibility for priority phrases",
         }}
       />
     </div>

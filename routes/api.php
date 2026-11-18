@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\CloudflareZoneController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\DomainSocialAccountController;
 use App\Http\Controllers\Api\V1\EmailDeliverabilityTestController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\V1\MonitoringCheckController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrganizationManagementController;
 use App\Http\Controllers\Api\V1\OrganizationSmtpSettingsController;
+use App\Http\Controllers\Api\V1\SeoKeywordController;
 use App\Http\Controllers\Api\V1\SystemSettingsController;
 use App\Http\Controllers\Api\V1\VaptWebHealthController;
 use App\Http\Controllers\Api\V1\VendorController;
@@ -75,6 +77,13 @@ Route::prefix('v1')->group(function (): void {
         Route::put('settings/main-smtp', [SystemSettingsController::class, 'updateMainSmtpSettings']);
         Route::post('settings/main-smtp/test', [SystemSettingsController::class, 'sendMainSmtpTestEmail']);
 
+        // Option B: company Cloudflare catalog (admin) + assigned domains (org).
+        Route::get('cloudflare/status', [CloudflareZoneController::class, 'status']);
+        Route::get('admin/cloudflare/zones', [CloudflareZoneController::class, 'adminIndex']);
+        Route::post('admin/cloudflare/zones/sync', [CloudflareZoneController::class, 'sync']);
+        Route::patch('admin/cloudflare/zones/{cloudflare_zone}/assign', [CloudflareZoneController::class, 'assign'])
+            ->whereUuid('cloudflare_zone');
+
         // Screenshot bytes: auth only (org header optional). Scoped route model binding caused 404s.
         Route::get(
             'experience-monitoring-screenshots/{experience_monitoring_screenshot}/file',
@@ -122,7 +131,18 @@ Route::prefix('v1')->group(function (): void {
             Route::post('vapt-web-health/email-tests', [EmailDeliverabilityTestController::class, 'store']);
             Route::get('vapt-web-health/email-tests/{email_deliverability_test}', [EmailDeliverabilityTestController::class, 'show'])
                 ->whereUuid('email_deliverability_test');
+            Route::get('cloudflare/domains', [CloudflareZoneController::class, 'index']);
+            Route::get('cloudflare/domains/{cloudflare_zone}', [CloudflareZoneController::class, 'show'])->whereUuid('cloudflare_zone');
+            Route::post('cloudflare/domains/{cloudflare_zone}/refresh', [CloudflareZoneController::class, 'refresh'])->whereUuid('cloudflare_zone');
+            Route::post('cloudflare/domains/{cloudflare_zone}/purge-cache', [CloudflareZoneController::class, 'purgeCache'])->whereUuid('cloudflare_zone');
+
             Route::post('marketing-seo/on-page-audit', [MarketingSeoController::class, 'onPageAudit']);
+            Route::get('marketing-seo/keywords', [SeoKeywordController::class, 'index']);
+            Route::post('marketing-seo/keywords', [SeoKeywordController::class, 'store']);
+            Route::get('marketing-seo/keywords/{seo_keyword}', [SeoKeywordController::class, 'show'])->whereUuid('seo_keyword');
+            Route::patch('marketing-seo/keywords/{seo_keyword}', [SeoKeywordController::class, 'update'])->whereUuid('seo_keyword');
+            Route::delete('marketing-seo/keywords/{seo_keyword}', [SeoKeywordController::class, 'destroy'])->whereUuid('seo_keyword');
+            Route::post('marketing-seo/keywords/{seo_keyword}/check', [SeoKeywordController::class, 'check'])->whereUuid('seo_keyword');
             Route::get('social-accounts', [DomainSocialAccountController::class, 'index']);
             Route::post('social-accounts', [DomainSocialAccountController::class, 'store']);
             Route::patch('social-accounts/{domain_social_account}', [DomainSocialAccountController::class, 'update']);

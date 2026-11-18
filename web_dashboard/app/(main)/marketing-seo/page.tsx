@@ -34,6 +34,23 @@ export default function MarketingSeoPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Megaphone className="h-5 w-5" />
+            Keywords
+          </CardTitle>
+          <CardDescription>
+            Track priority keywords across Google rankings and AI answer visibility.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="secondary">
+            <Link href="/marketing-seo/keywords">Open Keywords</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5" />
             Social Account Mapping
           </CardTitle>
           <CardDescription>

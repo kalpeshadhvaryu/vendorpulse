@@ -46,6 +46,7 @@ export const categoryLinks: SidebarCategory[] = [
     icon: ShieldAlert,
     children: [
       { href: "/admin", label: "Administration", icon: Users, globalAdminOnly: true },
+      { href: "/admin/cloudflare-domains", label: "Cloudflare Domains", icon: Globe, globalAdminOnly: true },
       { href: "/vendors", label: "Vendors", icon: Building2 },
       { href: "/invoices", label: "Invoices", icon: FileSpreadsheet },
       { href: "/email-activity", label: "Email activity", icon: Mail },
@@ -70,6 +71,7 @@ export const categoryLinks: SidebarCategory[] = [
       { href: "/vapt-web-health/url-checker", label: "Link/Website Auditor", icon: Link2 },
       { href: "/vapt-web-health", label: "Web Health", icon: Globe },
       { href: "/vapt-web-health/dns-check", label: "DNS Check", icon: Globe },
+      { href: "/cloudflare/domains", label: "My Cloudflare Domains", icon: Globe },
       { href: "/vapt-web-health/email-test", label: "Email Deliverability Test", icon: Mail },
       { href: "/vapt-web-health/port-checker", label: "Port Checker", icon: ShieldAlert },
       { href: "/vapt-web-health/website-speedtest", label: "Website Speedtest", icon: Gauge },
@@ -83,6 +85,7 @@ export const categoryLinks: SidebarCategory[] = [
     icon: Megaphone,
     children: [
       { href: "/marketing-seo/on-page-seo-scorecard", label: "On-Page SEO", icon: Globe },
+      { href: "/marketing-seo/keywords", label: "Keywords", icon: Megaphone },
       { label: "Social Account Mapping", icon: Link2, placeholder: true },
     ],
   },

@@ -969,6 +969,68 @@ export type ApiListResponse<T> = {
   meta?: PaginatedMeta;
 };
 
+export type SeoKeywordPriority = "high" | "medium" | "low";
+export type SeoKeywordStatus = "active" | "paused";
+export type SeoKeywordDevice = "mobile" | "desktop";
+
+export type SeoKeyword = {
+  id: string;
+  organization_id: string;
+  phrase: string;
+  priority: SeoKeywordPriority;
+  target_url: string | null;
+  target_domain: string | null;
+  country: string;
+  language: string;
+  device: SeoKeywordDevice;
+  tags: string[];
+  notes: string | null;
+  status: SeoKeywordStatus;
+  current_google_position: number | null;
+  current_google_url: string | null;
+  previous_google_position: number | null;
+  position_change: number | null;
+  current_ai_cited: boolean | null;
+  last_checked_at: string | null;
+  next_check_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type SeoKeywordAiResult = {
+  engine: string;
+  cited: boolean | null;
+  evidence: string | null;
+  status: string;
+};
+
+export type SeoKeywordCheck = {
+  id: string;
+  seo_keyword_id: string;
+  organization_id: string;
+  checked_at: string;
+  source: "manual" | "scheduled" | string;
+  provider: string | null;
+  google_position: number | null;
+  google_url: string | null;
+  ai_results: SeoKeywordAiResult[] | null;
+  meta: Record<string, unknown> | null;
+  error: string | null;
+};
+
+export type SeoKeywordListResponse = {
+  provider: string;
+  provider_configured: boolean;
+  items: SeoKeyword[];
+};
+
+export type SeoKeywordDetailResponse = {
+  keyword: SeoKeyword;
+  checks: SeoKeywordCheck[];
+  provider: string;
+  provider_configured: boolean;
+};
+
 export type ApiSuccessResponse<T> = {
   success: boolean;
   message: string;
