@@ -76,6 +76,60 @@ class CloudflareApiClient
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listDnsRecords(string $cfZoneId): array
+    {
+        $page = 1;
+        $records = [];
+
+        do {
+            $payload = $this->get('/zones/'.$cfZoneId.'/dns_records', [
+                'page' => $page,
+                'per_page' => 100,
+            ]);
+            $result = is_array($payload['result'] ?? null) ? $payload['result'] : [];
+            foreach ($result as $record) {
+                if (is_array($record)) {
+                    $records[] = $record;
+                }
+            }
+
+            $totalPages = (int) ($payload['result_info']['total_pages'] ?? 1);
+            $page++;
+        } while ($page <= $totalPages);
+
+        return $records;
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    public function createDnsRecord(string $cfZoneId, array $body): array
+    {
+        $payload = $this->post('/zones/'.$cfZoneId.'/dns_records', $body);
+
+        return is_array($payload['result'] ?? null) ? $payload['result'] : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    public function updateDnsRecord(string $cfZoneId, string $cfRecordId, array $body): array
+    {
+        $payload = $this->patch('/zones/'.$cfZoneId.'/dns_records/'.$cfRecordId, $body);
+
+        return is_array($payload['result'] ?? null) ? $payload['result'] : [];
+    }
+
+    public function deleteDnsRecord(string $cfZoneId, string $cfRecordId): void
+    {
+        $this->delete('/zones/'.$cfZoneId.'/dns_records/'.$cfRecordId);
+    }
+
+    /**
      * @param  array<string, mixed>  $query
      * @return array<string, mixed>
      */
@@ -93,6 +147,27 @@ class CloudflareApiClient
     private function post(string $path, array $body): array
     {
         $response = $this->http()->post(ltrim($path, '/'), $body);
+
+        return $this->unwrap($response->json(), $response->status());
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function patch(string $path, array $body): array
+    {
+        $response = $this->http()->patch(ltrim($path, '/'), $body);
+
+        return $this->unwrap($response->json(), $response->status());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function delete(string $path): array
+    {
+        $response = $this->http()->delete(ltrim($path, '/'));
 
         return $this->unwrap($response->json(), $response->status());
     }

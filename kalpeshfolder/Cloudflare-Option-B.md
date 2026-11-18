@@ -36,6 +36,20 @@ Token permissions (minimum):
 2. Admin → **Sync from Cloudflare**.
 3. Admin assigns each domain to an organization.
 4. Client selects that org → **My Cloudflare Domains** → Refresh / Purge cache.
+5. Client → **DNS Management** → add Cloudflare domain (from assigned zones) **or** Manual domain → manage records.
+
+## DNS Management (Cloudflare + non-Cloudflare)
+
+| Provider | Behaviour |
+|---|---|
+| **Cloudflare** | Live CRUD via Cloudflare API (needs Zone → DNS → Edit on the token) |
+| **Manual** | Records stored in VendorPulse only (inventory for domains not on Cloudflare) |
+
+UI: `/dns/domains` and `/dns/domains/{id}` under Cybersecurity & VAPT → DNS Management.
+
+Token permissions for DNS editing:
+- Zone → DNS → **Edit**
+- (existing) Zone → Zone:Read, Cache Purge, SSL Read as needed
 
 ## API
 

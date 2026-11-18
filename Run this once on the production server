@@ -99,6 +99,12 @@ cd /var/www/vendorpulse && bash vpproduction.sh deploy && bash vpproduction.sh v
 docker compose -f docker-compose.yml -f docker-compose.bind.yml build --no-cache frontend && \
 docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d frontend
 
+#shortcut following above commands
+git pull origin kalpesh
+bash vpproduction.sh deploy
+# And than reload new container following above commands
+docker compose -f docker-compose.yml -f docker-compose.bind.yml exec app php artisan optimize:clear
+
 #After code changes that need a rebuild:
 docker compose build app frontend && docker compose up -d app frontend
 

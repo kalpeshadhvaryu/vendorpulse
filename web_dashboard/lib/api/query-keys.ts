@@ -56,4 +56,7 @@ export const queryKeys = {
     ["cloudflare-admin-zones", params ?? {}] as const,
   cloudflareOrgDomains: (organizationId: string | null) =>
     ["cloudflare-org-domains", organizationId ?? "none"] as const,
+  dnsDomains: (organizationId: string | null) =>
+    ["dns-domains", organizationId ?? "none"] as const,
+  dnsRecords: (domainId: string) => ["dns-records", domainId] as const,
 };

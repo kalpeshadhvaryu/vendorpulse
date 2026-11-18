@@ -695,10 +695,10 @@
                 panel.innerHTML = filterBar + filtered.map((item) => `
                     <article class="finding status-${escapeHtml(item.status || 'fail')}">
                         <div class="finding-meta">
-                            ${badge(item.status)}
+                        ${badge(item.status)}
                             ${item.severity ? `<span class="chip">${escapeHtml(item.severity)}</span>` : ''}
                             ${item.key ? `<span class="finding-key">${escapeHtml(item.key)}</span>` : ''}
-                        </div>
+                    </div>
                         <h3>${escapeHtml(item.title || 'Finding')}</h3>
                         <p>${escapeHtml(item.explanation || '')}</p>
                         ${item.suggestion ? `<div class="finding-fix"><strong>Fix:</strong> ${escapeHtml(item.suggestion)}</div>` : ''}
@@ -707,8 +707,8 @@
                                 ${item.evidence.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}
                             </ul>
                         ` : ''}
-                    </article>
-                `).join('');
+                </article>
+            `).join('');
             }
 
             panel.querySelectorAll('.filter-btn').forEach((btn) => {
@@ -1260,7 +1260,7 @@
                 if (dkimSelector) {
                     document.getElementById('dkim-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
-                    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                results.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Unexpected error.';
@@ -1273,7 +1273,7 @@
                     dkimButton.textContent = 'Check again';
                 } else {
                     errorBox.textContent = message;
-                    errorBox.classList.remove('hidden');
+                errorBox.classList.remove('hidden');
                 }
             } finally {
                 button.disabled = false;

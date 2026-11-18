@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\CloudflareZoneController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
+use App\Http\Controllers\Api\V1\DnsDomainController;
 use App\Http\Controllers\Api\V1\DomainSocialAccountController;
 use App\Http\Controllers\Api\V1\EmailDeliverabilityTestController;
 use App\Http\Controllers\Api\V1\EmailLogController;
@@ -135,6 +136,17 @@ Route::prefix('v1')->group(function (): void {
             Route::get('cloudflare/domains/{cloudflare_zone}', [CloudflareZoneController::class, 'show'])->whereUuid('cloudflare_zone');
             Route::post('cloudflare/domains/{cloudflare_zone}/refresh', [CloudflareZoneController::class, 'refresh'])->whereUuid('cloudflare_zone');
             Route::post('cloudflare/domains/{cloudflare_zone}/purge-cache', [CloudflareZoneController::class, 'purgeCache'])->whereUuid('cloudflare_zone');
+
+            // DNS management: Cloudflare (live API) or manual (stored in VendorPulse).
+            Route::get('dns/domains', [DnsDomainController::class, 'index']);
+            Route::post('dns/domains', [DnsDomainController::class, 'store']);
+            Route::get('dns/domains/{dns_domain}', [DnsDomainController::class, 'show'])->whereUuid('dns_domain');
+            Route::patch('dns/domains/{dns_domain}', [DnsDomainController::class, 'update'])->whereUuid('dns_domain');
+            Route::delete('dns/domains/{dns_domain}', [DnsDomainController::class, 'destroy'])->whereUuid('dns_domain');
+            Route::get('dns/domains/{dns_domain}/records', [DnsDomainController::class, 'records'])->whereUuid('dns_domain');
+            Route::post('dns/domains/{dns_domain}/records', [DnsDomainController::class, 'storeRecord'])->whereUuid('dns_domain');
+            Route::patch('dns/domains/{dns_domain}/records/{dns_record}', [DnsDomainController::class, 'updateRecord'])->whereUuid('dns_domain');
+            Route::delete('dns/domains/{dns_domain}/records/{dns_record}', [DnsDomainController::class, 'destroyRecord'])->whereUuid('dns_domain');
 
             Route::post('marketing-seo/on-page-audit', [MarketingSeoController::class, 'onPageAudit']);
             Route::get('marketing-seo/keywords', [SeoKeywordController::class, 'index']);
