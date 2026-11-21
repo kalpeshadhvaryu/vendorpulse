@@ -287,7 +287,7 @@ export default function ExperienceMonitoringDetailPage() {
         <TabsList>
           <TabsTrigger value="history">Execution History</TabsTrigger>
           <TabsTrigger value="metrics">Performance Graphs</TabsTrigger>
-          <TabsTrigger value="report">VAPT Report</TabsTrigger>
+          <TabsTrigger value="report">Experience Report</TabsTrigger>
           <TabsTrigger value="screenshots">Screenshots</TabsTrigger>
         </TabsList>
 
@@ -595,7 +595,7 @@ function VaptReportPanel({
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="text-base">Technical Diagnostics</CardTitle>
-            <CardDescription>DNS, TLS, server, and speed baselines used for VAPT-style checks.</CardDescription>
+            <CardDescription>DNS, TLS, server, and speed baselines used for experience checks.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>DNS Host: {report.network.dns?.host ?? "-"}</p>

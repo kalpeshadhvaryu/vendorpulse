@@ -79,6 +79,8 @@ export default function CybersecurityVaptPage() {
       <MainMenuSectionCards
         sectionId="cybersecurity-vapt"
         statsByHref={{
+          "/vapt-web-health/security-audit": "URL-only security posture scan with branded PDF",
+          "/monitoring/experience": "Authenticated journey monitoring and reports",
           "/vapt-web-health/url-checker": "Quick links and site-wide audits",
           "/vapt-web-health": "Security and reliability hub",
           "/vapt-web-health/dns-check": "DNS records, policy, and resolver diagnostics",

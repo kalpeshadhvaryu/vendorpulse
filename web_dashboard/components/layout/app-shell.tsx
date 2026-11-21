@@ -28,7 +28,7 @@ const titles: Record<string, string> = {
   "/invoices": "Invoices",
   "/email-activity": "Email activity",
   "/monitoring": "Monitoring",
-  "/monitoring/experience": "VAPT",
+  "/monitoring/experience": "Experience Monitoring",
   "/notifications": "Notifications",
   "/settings": "Settings",
   "/docs": "Documentation",
@@ -61,7 +61,7 @@ function titleFromPath(pathname: string | null): string {
     return "Administration";
   }
   if (p.startsWith("/monitoring/experience")) {
-    return "VAPT";
+    return "Experience Monitoring";
   }
   if (p.startsWith("/monitoring")) {
     return "Monitoring";
