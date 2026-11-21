@@ -122,6 +122,24 @@ export default function DnsCheckPage() {
 
       {report ? (
         <>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => {
+                void import("@/lib/api/reports")
+                  .then(({ downloadReportPdf }) =>
+                    downloadReportPdf("dns-check", report, {
+                      meta: { target: report.target || target },
+                      fileName: `dns-check-${report.target || "report"}.pdf`,
+                    }),
+                  )
+                  .then(() => toast.success("PDF downloaded"))
+                  .catch((error) => toast.error(getApiErrorMessage(error)));
+              }}
+            >
+              Download PDF
+            </Button>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-border/60">
               <CardHeader className="pb-2">

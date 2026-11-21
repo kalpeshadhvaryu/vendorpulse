@@ -251,7 +251,24 @@ export default function PortCheckerPage() {
                 <CardTitle>Port Results</CardTitle>
                 <CardDescription>Detailed result for each scanned TCP port.</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={() => {
+                    void import("@/lib/api/reports")
+                      .then(({ downloadReportPdf }) =>
+                        downloadReportPdf("port-checker", report, {
+                          meta: { target: report.target || report.host },
+                          fileName: `port-checker-${report.host || "report"}.pdf`,
+                        }),
+                      )
+                      .then(() => toast.success("PDF downloaded"))
+                      .catch((error) => toast.error(getApiErrorMessage(error)));
+                  }}
+                >
+                  Download PDF
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

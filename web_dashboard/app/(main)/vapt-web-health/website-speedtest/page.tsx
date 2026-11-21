@@ -245,6 +245,25 @@ export default function WebsiteSpeedtestPage() {
 
       {report ? (
         <>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => {
+                void import("@/lib/api/reports")
+                  .then(({ downloadReportPdf }) =>
+                    downloadReportPdf("website-speedtest", report, {
+                      meta: { target: report.final_url || report.target_url || targetUrl },
+                      fileName: "website-speedtest.pdf",
+                    }),
+                  )
+                  .then(() => toast.success("PDF downloaded"))
+                  .catch((error) => toast.error(getApiErrorMessage(error)));
+              }}
+            >
+              <Download className="size-4" />
+              Download PDF
+            </Button>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-border/60">
               <CardHeader className="pb-2">

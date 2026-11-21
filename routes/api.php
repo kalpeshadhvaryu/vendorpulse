@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\CloudflareZoneController;
 use App\Http\Controllers\Api\V1\DashboardAnalyticsController;
 use App\Http\Controllers\Api\V1\DnsDomainController;
+use App\Http\Controllers\Api\V1\ReportPdfController;
 use App\Http\Controllers\Api\V1\DomainSocialAccountController;
 use App\Http\Controllers\Api\V1\EmailDeliverabilityTestController;
 use App\Http\Controllers\Api\V1\EmailLogController;
@@ -107,9 +108,14 @@ Route::prefix('v1')->group(function (): void {
             Route::get('experience-monitoring-tests/{experience_monitoring_test}/runs', [ExperienceMonitoringController::class, 'runs']);
             Route::get('experience-monitoring-tests/{experience_monitoring_test}/metrics', [ExperienceMonitoringController::class, 'metrics']);
             Route::get('experience-monitoring-tests/{experience_monitoring_test}/report', [ExperienceMonitoringController::class, 'report']);
+            Route::get('experience-monitoring-tests/{experience_monitoring_test}/report.pdf', [ReportPdfController::class, 'vapt'])
+                ->whereUuid('experience_monitoring_test');
             Route::get('experience-monitoring-tests/{experience_monitoring_test}/screenshots', [ExperienceMonitoringController::class, 'screenshots']);
             Route::post('experience-monitoring-tests/{experience_monitoring_test}/trigger', [ExperienceMonitoringController::class, 'trigger']);
             Route::apiResource('experience-monitoring-tests', ExperienceMonitoringController::class);
+
+            Route::post('reports/pdf/{type}', [ReportPdfController::class, 'store'])
+                ->where('type', 'port-checker|url-checker|dns-check|website-speedtest|vapt|on-page-seo|security-audit');
 
             Route::post('email-mailboxes/{email_mailbox}/test-connection', [EmailMailboxController::class, 'testConnection']);
             Route::apiResource('email-mailboxes', EmailMailboxController::class);
@@ -128,6 +134,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('vapt-web-health/website-speedtest-runs', [VaptWebHealthController::class, 'websiteSpeedtestRuns']);
             Route::post('vapt-web-health/dns-check', [VaptWebHealthController::class, 'dnsCheck']);
             Route::post('vapt-web-health/port-checker', [VaptWebHealthController::class, 'portChecker']);
+            Route::post('vapt-web-health/security-audit', [VaptWebHealthController::class, 'securityAudit']);
             Route::get('vapt-web-health/email-tests', [EmailDeliverabilityTestController::class, 'index']);
             Route::post('vapt-web-health/email-tests', [EmailDeliverabilityTestController::class, 'store']);
             Route::get('vapt-web-health/email-tests/{email_deliverability_test}', [EmailDeliverabilityTestController::class, 'show'])

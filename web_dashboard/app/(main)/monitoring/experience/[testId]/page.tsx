@@ -400,7 +400,14 @@ export default function ExperienceMonitoringDetailPage() {
         </TabsContent>
 
         <TabsContent value="report">
-          <VaptReportPanel report={reportQuery.data} isError={reportQuery.isError} errorMessage={getApiErrorMessage(reportQuery.error)} />
+          <VaptReportPanel
+            testId={testId}
+            from={from}
+            to={to}
+            report={reportQuery.data}
+            isError={reportQuery.isError}
+            errorMessage={getApiErrorMessage(reportQuery.error)}
+          />
         </TabsContent>
 
         <TabsContent value="screenshots">
@@ -494,10 +501,16 @@ export default function ExperienceMonitoringDetailPage() {
 }
 
 function VaptReportPanel({
+  testId,
+  from,
+  to,
   report,
   isError,
   errorMessage,
 }: {
+  testId: string;
+  from: string;
+  to: string;
   report: ExperienceMonitoringTechnicalReport | undefined;
   isError: boolean;
   errorMessage: string;
@@ -524,6 +537,23 @@ function VaptReportPanel({
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          onClick={() => {
+            void import("@/lib/api/reports")
+              .then(({ downloadVaptReportPdf }) => downloadVaptReportPdf(testId, { from, to }))
+              .then(() => {
+                void import("sonner").then(({ toast }) => toast.success("PDF downloaded"));
+              })
+              .catch((error) => {
+                void import("sonner").then(({ toast }) => toast.error(getApiErrorMessage(error)));
+              });
+          }}
+        >
+          Download PDF
+        </Button>
+      </div>
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="border-border/60">
           <CardHeader>

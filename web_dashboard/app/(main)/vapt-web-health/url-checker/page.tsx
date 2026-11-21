@@ -361,7 +361,24 @@ export default function UrlCheckerPage() {
                 Source page to discovered links with status code, health state, and response time.
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  void import("@/lib/api/reports")
+                    .then(({ downloadReportPdf }) =>
+                      downloadReportPdf("url-checker", report, {
+                        meta: { target: report.target_url },
+                        fileName: `${report.mode === "site_crawl" ? "website-audit" : "quick-links"}.pdf`,
+                      }),
+                    )
+                    .then(() => toast.success("PDF downloaded"))
+                    .catch((error) => toast.error(getApiErrorMessage(error)));
+                }}
+              >
+                <Download className="size-4" />
+                Download PDF
+              </Button>
               <Button
                 type="button"
                 variant="outline"

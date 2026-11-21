@@ -99,6 +99,24 @@ export default function VaptWebHealthPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <Card className="border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Website Security Audit
+            </CardTitle>
+            <CardDescription>
+              Misconfiguration, cookie/session hardening, CSRF form defenses, sensitive paths, and optional deep
+              injection heuristics — with branded PDF export.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/vapt-web-health/security-audit">Open Security Audit</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="border-border/60 bg-muted/20">

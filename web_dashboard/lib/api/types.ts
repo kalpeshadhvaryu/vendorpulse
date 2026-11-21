@@ -806,6 +806,43 @@ export type PortCheckerReport = {
   findings: PortCheckerFinding[];
 };
 
+export type SecurityAuditFinding = {
+  category: string;
+  title: string;
+  status: "pass" | "warning" | "fail" | string;
+  severity: string;
+  explanation: string;
+  suggestion: string;
+  evidence: Record<string, unknown>;
+};
+
+export type SecurityAuditReport = {
+  target_url: string;
+  final_url: string;
+  host: string;
+  depth: "standard" | "deep" | string;
+  scanned_at: string;
+  http_status: number | null;
+  severity: string;
+  risk_score: number;
+  summary: {
+    total_checks: number;
+    passed: number;
+    warnings: number;
+    failed: number;
+  };
+  categories: Record<string, { pass: number; warning: number; fail: number }>;
+  transport?: {
+    scheme?: string;
+    tls?: Record<string, unknown> | null;
+  };
+  headers?: Record<string, unknown>;
+  cookies?: Array<Record<string, unknown>>;
+  forms?: Array<Record<string, unknown>>;
+  findings: SecurityAuditFinding[];
+  scope_note?: string;
+};
+
 export type SeoAuditMode = "quick" | "site_crawl";
 
 export type SeoAuditItem = {

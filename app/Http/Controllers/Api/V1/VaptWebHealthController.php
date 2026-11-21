@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\Api\V1\Vapt\RunUrlCheckerRequest;
 use App\Http\Requests\Api\V1\Vapt\RunDnsCheckRequest;
 use App\Http\Requests\Api\V1\Vapt\RunPortCheckerRequest;
+use App\Http\Requests\Api\V1\Vapt\RunSecurityAuditRequest;
 use App\Http\Requests\Api\V1\Vapt\RunWebsiteSpeedtestRequest;
 use App\Models\Vendor;
 use App\Models\WebsiteSpeedtestRun;
 use App\Services\Vapt\DnsCheckService;
 use App\Services\Vapt\PortCheckerService;
+use App\Services\Vapt\SecurityAuditService;
 use App\Services\Vapt\UrlCheckerService;
 use App\Services\Vapt\WebsiteSpeedtestService;
 use App\Support\ApiResponse;
@@ -23,6 +25,7 @@ class VaptWebHealthController extends BaseApiController
         private readonly WebsiteSpeedtestService $websiteSpeedtest,
         private readonly DnsCheckService $dnsCheck,
         private readonly PortCheckerService $portChecker,
+        private readonly SecurityAuditService $securityAudit,
     ) {}
 
     public function urlChecker(RunUrlCheckerRequest $request): JsonResponse
@@ -107,6 +110,17 @@ class VaptWebHealthController extends BaseApiController
         $report = $this->dnsCheck->scan($target, $validated['dkim_selector'] ?? null);
 
         return ApiResponse::success($report, 'DNS check report generated.');
+    }
+
+    public function securityAudit(RunSecurityAuditRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $targetUrl = (string) ($validated['target_url'] ?? '');
+        $depth = (string) ($validated['depth'] ?? 'standard');
+
+        $report = $this->securityAudit->audit($targetUrl, $depth);
+
+        return ApiResponse::success($report, 'Security audit report generated.');
     }
 
     public function portChecker(RunPortCheckerRequest $request): JsonResponse

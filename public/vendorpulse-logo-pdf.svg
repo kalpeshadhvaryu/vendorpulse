@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="VendorPulse">
+  <rect x="0" y="0" width="48" height="48" rx="10" fill="#14b8a6"/>
+  <path d="M12 34 L24 12 L36 34 Z" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round"/>
+  <circle cx="24" cy="28" r="3.2" fill="#ffffff"/>
+</svg>

@@ -4,8 +4,10 @@ FROM php:8.4-cli-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git unzip libpq-dev libc-client-dev libkrb5-dev \
+    libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
     nodejs npm \
-    && docker-php-ext-install pdo pdo_pgsql pcntl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_pgsql pcntl gd \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && pecl install imap \

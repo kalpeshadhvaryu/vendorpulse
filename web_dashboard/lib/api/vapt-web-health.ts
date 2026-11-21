@@ -5,6 +5,7 @@ import type {
   EmailDeliverabilityTest,
   EmailDeliverabilityTestList,
   PortCheckerReport,
+  SecurityAuditReport,
   UrlCheckerMode,
   UrlCheckerReport,
   WebsiteSpeedtestReport,
@@ -117,6 +118,23 @@ export type RunPortCheckerPayload = {
 export async function runPortChecker(payload: RunPortCheckerPayload): Promise<PortCheckerReport> {
   const { data } = await api.post<ApiSuccessResponse<PortCheckerReport>>(
     "/vapt-web-health/port-checker",
+    payload,
+  );
+
+  return data.data;
+}
+
+export type RunSecurityAuditPayload = {
+  target_url: string;
+  authorized: boolean;
+  depth?: "standard" | "deep";
+};
+
+export async function runSecurityAudit(
+  payload: RunSecurityAuditPayload,
+): Promise<SecurityAuditReport> {
+  const { data } = await api.post<ApiSuccessResponse<SecurityAuditReport>>(
+    "/vapt-web-health/security-audit",
     payload,
   );
 

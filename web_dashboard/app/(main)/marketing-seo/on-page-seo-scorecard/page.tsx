@@ -224,7 +224,24 @@ function QuickSeoResults({ report }: { report: OnPageSeoAuditReport }) {
             <CardTitle>Quick SEO results</CardTitle>
             <CardDescription>Scanned: {report.target_url}</CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                void import("@/lib/api/reports")
+                  .then(({ downloadReportPdf }) =>
+                    downloadReportPdf("on-page-seo", report, {
+                      meta: { target: report.target_url },
+                      fileName: "quick-seo-audit.pdf",
+                    }),
+                  )
+                  .then(() => toast.success("PDF downloaded"))
+                  .catch((error) => toast.error(getApiErrorMessage(error)));
+              }}
+            >
+              <Download className="size-4" />
+              Download PDF
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -412,7 +429,24 @@ function SiteSeoResults({ report }: { report: OnPageSeoAuditReport }) {
             <CardTitle>Site SEO audit results</CardTitle>
             <CardDescription>Per-page scores and recurring issues across the crawl.</CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                void import("@/lib/api/reports")
+                  .then(({ downloadReportPdf }) =>
+                    downloadReportPdf("on-page-seo", report, {
+                      meta: { target: report.target_url },
+                      fileName: "site-seo-audit.pdf",
+                    }),
+                  )
+                  .then(() => toast.success("PDF downloaded"))
+                  .catch((error) => toast.error(getApiErrorMessage(error)));
+              }}
+            >
+              <Download className="size-4" />
+              Download PDF
+            </Button>
             <Button
               type="button"
               variant="outline"
